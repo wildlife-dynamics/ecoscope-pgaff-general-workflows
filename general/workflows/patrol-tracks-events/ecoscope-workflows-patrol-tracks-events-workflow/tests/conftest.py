@@ -30,8 +30,8 @@ ARTIFACTS = Path(__file__).parent.parent
 SNAPSHOT_DIRNAME = ARTIFACTS.parent / "__results_snapshots__"
 SNAPSHOT_DIFF_OUTPUT_DIRNAME = ARTIFACTS.parent / "__diff_output__"
 TEST_CASES_YAML = ARTIFACTS.parent / "test-cases.yaml"
-ENTRYPOINT = "pixi run -e default ecoscope-workflows-patrol-events-workflow"
-MATCHSPEC_OVERRIDE = "ecoscope-workflows-patrol-events-workflow"
+ENTRYPOINT = "pixi run -e default ecoscope-workflows-patrol-tracks-events-workflow"
+MATCHSPEC_OVERRIDE = "ecoscope-workflows-patrol-tracks-events-workflow"
 IO_TASKS_IMPORTABLE_REFERENCES = [
     "ecoscope_workflows_ext_ecoscope.tasks.io.get_patrol_observations",
     "ecoscope_workflows_ext_ecoscope.tasks.io.get_patrol_events",

@@ -25,6 +25,6 @@ FROM install AS app
 ENV PORT 8080
 ENV CONCURRENCY 1
 ENV UVICORN_TIMEOUT 600
-CMD ECOSCOPE_WORKFLOWS_MATCHSPEC_OVERRIDE=ecoscope-workflows-patrol-events-workflow \
+CMD ECOSCOPE_WORKFLOWS_MATCHSPEC_OVERRIDE=ecoscope-workflows-patrol-tracks-events-workflow \
     pixi run -e runner \
     uvicorn --host 0.0.0.0 --port $PORT --workers $CONCURRENCY --timeout-graceful-shutdown $UVICORN_TIMEOUT ecoscope_workflows_runner.app:app

@@ -5,8 +5,8 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: d60ee2ed964f1f1549867e67a052dc35d5cb7e987a4fec67528424fcc367dfe7
-artifacts_sha256_strict: ff4a515ea801ca430c495cb7eaf3101ab2033482c7ddbbc7408580fde7e94f04
+artifacts_sha256_basic: 476dd8335a3088892a9551504cdd90ec950cbe0c83dbc0eead7b36ccb9d92a4f
+artifacts_sha256_strict: 25d0a637e83cd3df6b3f86e60313eeb299ad53ea24200db1bdf3adfd76939e64
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
   name: ecoscope-workflows-core
@@ -15,10 +15,10 @@ installed_requirements:
   name: ecoscope-workflows-ext-general
   version: {version: ==9999}
 params_sha256: c159e9712403636e5883ccbe998c4eebbbc88f744a8870ad90e21df4ea7e4edf
-spec_sha256: 32c2c8bd5c0d04f401176c6f31209f300e9a8511ba486b6282215ffaadef881b
+spec_sha256: bd343d0428b9f7e42066343416ef2c729588538e354c68cf374c7b297748997e
 
 ```
 
-# ecoscope-workflows-patrol-events-workflow
+# ecoscope-workflows-patrol-tracks-events-workflow
 
 ![](graph.png)

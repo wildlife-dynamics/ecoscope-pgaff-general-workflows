@@ -1,17 +1,13 @@
 workflow_details:
-  name: "Patrol Events Workflow"
+  name: "Patrol Tracks Events Workflow"
   description: "Process and visualize patrol observations and events."
 
 er_client_name:
   data_source:
-    name: "mara_ep"
-    server: "server_name"
-    username: "username"
-    password: "password"
+    name: "mara_ep" # Ecoscope
 
 er_patrol_types:
-  patrol_types: [ "patrol_type"
-    ]
+  patrol_types: [ ]
 
 er_patrol_status:
   status: ["done"]

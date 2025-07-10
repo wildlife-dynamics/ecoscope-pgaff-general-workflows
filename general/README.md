@@ -63,27 +63,27 @@ or pytest-311/pytest-312 depending on your desired python version.
 
 2. Run the following command to compile your workflow:
    ```bash
-   pixi run compile-patrol-events
+   pixi run compile-patrol-tracks-events
    ```
    
-   This will generate a folder called `ecoscope-workflows-patrol-events-workflow` with your compiled workflow.
+   This will generate a folder called `ecoscope-workflows-patrol-tracks-events-workflow` with your compiled workflow.
 
    Later on if you update the workflow spec you can recompile it using:
    ```bash
-   pixi run recompile-patrol-events
+   pixi run recompile-patrol-tracks-events
    ```
 
 3. Test your workflow. First set up your output directory by
    ```bash
-   mkdir -p /tmp/workflows/general/patrol-events/output
-   export ECOSCOPE_WORKFLOWS_RESULTS=file:///tmp/workflows/general/patrol-events/output
+   mkdir -p /tmp/workflows/general/patrol-tracks-events/output
+   export ECOSCOPE_WORKFLOWS_RESULTS=file:///tmp/workflows/general/patrol-tracks-events/output
    ```
    Then run your workflow by
    ```bash
-   cd workflows/patrol-events/ecoscope-workflows-patrol-events-workflow
-   pixi run ecoscope-workflows-patrol-events-workflow run --config-file ../param.yaml --execution-mode sequential --mock-io
+   cd workflows/patrol-tracks-events/ecoscope-workflows-patrol-tracks-events-workflow
+   pixi run ecoscope-workflows-patrol-tracks-events-workflow run --config-file ../param.yaml --execution-mode sequential --mock-io
    ```
-   You can find the results in your output folder in `/tmp/workflows/general/patrol-events/output/result.json`
+   You can find the results in your output folder in `/tmp/workflows/general/patrol-tracks-events/output/result.json`
    
 ## Publish Your Changes
 

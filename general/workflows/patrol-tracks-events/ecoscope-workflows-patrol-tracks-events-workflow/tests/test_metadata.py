@@ -7,8 +7,8 @@ import pytest
 import pydantic
 from fastapi.testclient import TestClient
 
-from ecoscope_workflows_patrol_events_workflow.params import Params
-from ecoscope_workflows_patrol_events_workflow.formdata import FormData
+from ecoscope_workflows_patrol_tracks_events_workflow.params import Params
+from ecoscope_workflows_patrol_tracks_events_workflow.formdata import FormData
 from ecoscope_workflows_runner.testing import Case
 from ecoscope_workflows_runner.app import app
 

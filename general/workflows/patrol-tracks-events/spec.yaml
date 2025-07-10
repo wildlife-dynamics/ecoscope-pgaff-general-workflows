@@ -1,4 +1,4 @@
-id: patrol_events
+id: patrol_tracks_events
 
 requirements:
   - name: ecoscope-workflows-core
