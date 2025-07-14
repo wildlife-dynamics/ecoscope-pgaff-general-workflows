@@ -4,7 +4,7 @@ workflow_details:
 
 er_client_name:
   data_source:
-    name: "mara_ep" # Ecoscope
+    name: "demo" # Ecoscope
 
 er_patrol_types:
   patrol_types: [ ]
