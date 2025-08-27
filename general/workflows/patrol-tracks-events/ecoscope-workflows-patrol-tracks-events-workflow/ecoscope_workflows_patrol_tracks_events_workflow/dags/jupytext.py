@@ -196,7 +196,9 @@ er_patrol_status = (
 # %%
 # parameters
 
-patrol_obs_params = dict()
+patrol_obs_params = dict(
+    patrol_types=...,
+)
 
 # %%
 # call the task
@@ -231,8 +233,9 @@ patrol_obs = (
 # parameters
 
 fetch_patrol_events_params = dict(
-    event_type=...,
-    drop_null_geometry=...,
+    patrol_types=...,
+    event_types=...,
+    include_null_geometry=...,
 )
 
 # %%
@@ -518,10 +521,7 @@ traj_colormap = (
 # parameters
 
 filter_fetched_patrol_events_params = dict(
-    min_x=...,
-    max_x=...,
-    min_y=...,
-    max_y=...,
+    bounding_box=...,
     filter_point_coords=...,
 )
 
@@ -684,10 +684,7 @@ pe_cols_to_string = (
 # parameters
 
 filter_patrol_events_params = dict(
-    min_x=...,
-    max_x=...,
-    min_y=...,
-    max_y=...,
+    bounding_box=...,
     filter_point_coords=...,
 )
 

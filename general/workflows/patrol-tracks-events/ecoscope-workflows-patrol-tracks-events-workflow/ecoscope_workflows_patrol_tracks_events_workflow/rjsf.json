@@ -73,7 +73,7 @@
               },
               "title": "Patrol Types",
               "type": "array",
-              "description": "list of UUID of patrol types"
+              "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
             }
           },
           "required": [
@@ -87,7 +87,7 @@
           "properties": {
             "status": {
               "default": null,
-              "description": "List comprised of 'active'/'overdue'/'done'/'cancelled'",
+              "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
               "ecoscope:advanced": true,
               "items": {
                 "enum": [
@@ -106,38 +106,56 @@
           "required": [],
           "title": ""
         },
+        "patrol_obs": {
+          "additionalProperties": false,
+          "properties": {
+            "patrol_types": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Patrol Types",
+              "type": "array",
+              "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
+            }
+          },
+          "required": [
+            "patrol_types"
+          ],
+          "type": "object",
+          "title": ""
+        },
         "fetch_patrol_events": {
           "additionalProperties": false,
           "properties": {
-            "event_type": {
+            "patrol_types": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Patrol Types",
+              "type": "array",
+              "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
+            },
+            "event_types": {
               "items": {
                 "type": "string"
               },
               "title": "Event Types",
               "type": "array",
-              "description": "List of event types by name"
+              "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types. Only V1 Event Types can be analyzed at this time."
             },
-            "drop_null_geometry": {
-              "default": false,
-              "title": "Drop Null Geometry",
-              "type": "boolean",
-              "description": "Whether or not to keep events with no geometry data",
-              "ecoscope:advanced": true
+            "include_null_geometry": {
+              "default": true,
+              "title": "Include Events Without a Geometry (point or polygon)",
+              "type": "boolean"
             }
           },
           "required": [
-            "event_type"
+            "patrol_types",
+            "event_types"
           ],
           "type": "object",
           "title": ""
         }
-      },
-      "uiSchema": {
-        "ui:order": [
-          "er_patrol_types",
-          "er_patrol_status",
-          "fetch_patrol_events"
-        ]
       }
     },
     "groupers": {
@@ -184,11 +202,11 @@
                 "max_length_meters": 100000,
                 "min_time_secs": 1,
                 "max_time_secs": 172800,
-                "min_speed_kmhr": 0.0001,
+                "min_speed_kmhr": 0.01,
                 "max_speed_kmhr": 500
               },
-              "title": "Trajectory Segment Filter",
-              "description": "Trajectory Segments outside these bounds will be removed",
+              "title": " ",
+              "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
               "ecoscope:advanced": true
             }
           },
@@ -196,11 +214,6 @@
           "type": "object",
           "title": "Trajectories"
         }
-      },
-      "uiSchema": {
-        "ui:order": [
-          "patrol_traj"
-        ]
       }
     },
     "Preprocess patrol events": {
@@ -211,28 +224,20 @@
         "filter_patrol_events": {
           "additionalProperties": false,
           "properties": {
-            "min_x": {
-              "default": -180.0,
-              "title": "Min X",
-              "type": "number",
-              "ecoscope:advanced": true
-            },
-            "max_x": {
-              "default": 180.0,
-              "title": "Max X",
-              "type": "number",
-              "ecoscope:advanced": true
-            },
-            "min_y": {
-              "default": -90.0,
-              "title": "Min Y",
-              "type": "number",
-              "ecoscope:advanced": true
-            },
-            "max_y": {
-              "default": 90.0,
-              "title": "Max Y",
-              "type": "number",
+            "bounding_box": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/BoundingBox"
+                }
+              ],
+              "default": {
+                "min_y": -90.0,
+                "max_y": 90.0,
+                "min_x": -180.0,
+                "max_x": 180.0
+              },
+              "title": "Bounding Box",
+              "description": "Filter events to inside these bounding coordinates.",
               "ecoscope:advanced": true
             },
             "filter_point_coords": {
@@ -240,8 +245,9 @@
               "items": {
                 "$ref": "#/$defs/Coordinate"
               },
-              "title": "Filter Point Coords",
+              "title": "Filter Exact Point Coordinates",
               "type": "array",
+              "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
               "ecoscope:advanced": true
             }
           },
@@ -249,11 +255,6 @@
           "type": "object",
           "title": "Apply Coordinate Filter"
         }
-      },
-      "uiSchema": {
-        "ui:order": [
-          "filter_patrol_events"
-        ]
       }
     },
     "base_map_defs": {
@@ -271,7 +272,7 @@
             }
           ],
           "items": {
-            "title": "Base Layer or Custom Layer",
+            "title": "Base Layer",
             "anyOf": [
               {
                 "properties": {
@@ -446,7 +447,7 @@
               }
             ]
           },
-          "title": "Set Map Base Layers",
+          "title": " ",
           "type": "array",
           "description": "Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
           "ecoscope:advanced": true
@@ -515,12 +516,6 @@
           "type": "object",
           "title": "Draw Ecomaps"
         }
-      },
-      "uiSchema": {
-        "ui:order": [
-          "patrol_traj_map_layers",
-          "traj_patrol_events_ecomap"
-        ]
       }
     }
   },
@@ -585,64 +580,96 @@
       "properties": {
         "min_length_meters": {
           "default": 0.001,
-          "description": "Minimum Segment Length in Meters",
           "ecoscope:advanced": true,
-          "title": "Min Length Meters",
+          "minimum": 0.001,
+          "title": "Minimum Segment Length (Meters)",
           "type": "number"
         },
         "max_length_meters": {
           "default": 100000,
-          "description": "Maximum Segment Length in Meters",
           "ecoscope:advanced": true,
-          "title": "Max Length Meters",
+          "exclusiveMinimum": 0.001,
+          "title": "Maximum Segment Length (Meters)",
           "type": "number"
         },
         "min_time_secs": {
           "default": 1,
-          "description": "Minimum Segment Duration in Seconds",
           "ecoscope:advanced": true,
-          "title": "Min Time Secs",
+          "minimum": 1,
+          "title": "Minimum Segment Duration (Seconds)",
           "type": "number"
         },
         "max_time_secs": {
           "default": 172800,
-          "description": "Maximum Segment Duration in Seconds",
           "ecoscope:advanced": true,
-          "title": "Max Time Secs",
+          "exclusiveMinimum": 1,
+          "title": "Maximum Segment Duration (Seconds)",
           "type": "number"
         },
         "min_speed_kmhr": {
-          "default": 0.0001,
-          "description": "Minimum Segment Speed in Kilometers per Hour",
+          "default": 0.01,
           "ecoscope:advanced": true,
-          "title": "Min Speed Kmhr",
+          "exclusiveMinimum": 0.001,
+          "title": "Minimum Segment Speed (Kilometers per Hour)",
           "type": "number"
         },
         "max_speed_kmhr": {
           "default": 500,
-          "description": "Maximum Segment Speed in Kilometers per Hour",
           "ecoscope:advanced": true,
-          "title": "Max Speed Kmhr",
+          "exclusiveMinimum": 0.001,
+          "title": "Maximum Segment Speed (Kilometers per Hour)",
           "type": "number"
         }
       },
       "title": "TrajectorySegmentFilter",
       "type": "object"
     },
-    "Coordinate": {
+    "BoundingBox": {
       "properties": {
-        "x": {
-          "title": "X",
+        "min_y": {
+          "default": -90.0,
+          "ecoscope:advanced": true,
+          "title": "Min Latitude",
           "type": "number"
         },
+        "max_y": {
+          "default": 90.0,
+          "ecoscope:advanced": true,
+          "title": "Max Latitude",
+          "type": "number"
+        },
+        "min_x": {
+          "default": -180.0,
+          "ecoscope:advanced": true,
+          "title": "Min Longitude",
+          "type": "number"
+        },
+        "max_x": {
+          "default": 180.0,
+          "ecoscope:advanced": true,
+          "title": "Max Longitude",
+          "type": "number"
+        }
+      },
+      "title": "BoundingBox",
+      "type": "object"
+    },
+    "Coordinate": {
+      "properties": {
         "y": {
-          "title": "Y",
+          "description": "Example -0.15293",
+          "title": "Latitude",
+          "type": "number"
+        },
+        "x": {
+          "description": "Example 37.30906",
+          "title": "Longitude",
           "type": "number"
         }
       },
       "required": [
-        "x",
-        "y"
+        "y",
+        "x"
       ],
       "title": "Coordinate",
       "type": "object"
@@ -734,8 +761,61 @@
       "type": "object"
     }
   },
-  "additionalProperties": false,
   "uiSchema": {
+    "workflow_details": {
+      "ui:order": [
+        "name",
+        "description"
+      ]
+    },
+    "time_range": {
+      "ui:order": [
+        "since",
+        "until"
+      ]
+    },
+    "Patrol and Event Types": {
+      "ui:order": [
+        "er_patrol_types",
+        "er_patrol_status",
+        "patrol_obs",
+        "fetch_patrol_events"
+      ],
+      "fetch_patrol_events": {
+        "ui:order": [
+          "patrol_types",
+          "event_types",
+          "include_null_geometry"
+        ]
+      }
+    },
+    "Preprocess patrol events": {
+      "filter_fetched_patrol_events": {
+        "ui:order": [
+          "bounding_box",
+          "filter_point_coords"
+        ]
+      },
+      "filter_patrol_events": {
+        "ui:order": [
+          "bounding_box",
+          "filter_point_coords"
+        ]
+      }
+    },
+    "Ecomap Generation": {
+      "ui:order": [
+        "patrol_traj_map_layers",
+        "traj_patrol_events_ecomap"
+      ],
+      "traj_patrol_events_ecomap": {
+        "ui:order": [
+          "title",
+          "north_arrow_style",
+          "legend_style"
+        ]
+      }
+    },
     "ui:order": [
       "workflow_details",
       "er_client_name",
@@ -747,5 +827,6 @@
       "base_map_defs",
       "Ecomap Generation"
     ]
-  }
+  },
+  "additionalProperties": false
 }

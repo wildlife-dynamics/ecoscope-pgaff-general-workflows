@@ -38,7 +38,9 @@ class ErPatrolTypes(BaseModel):
         extra="forbid",
     )
     patrol_types: List[str] = Field(
-        ..., description="list of UUID of patrol types", title="Patrol Types"
+        ...,
+        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
+        title="Patrol Types",
     )
 
 
@@ -55,8 +57,19 @@ class ErPatrolStatus(BaseModel):
     )
     status: Optional[List[StatusEnum]] = Field(
         None,
-        description="List comprised of 'active'/'overdue'/'done'/'cancelled'",
+        description="Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
         title="Status",
+    )
+
+
+class PatrolObs(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    patrol_types: List[str] = Field(
+        ...,
+        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
+        title="Patrol Types",
     )
 
 
@@ -64,13 +77,18 @@ class FetchPatrolEvents(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    event_type: List[str] = Field(
-        ..., description="List of event types by name", title="Event Types"
+    patrol_types: List[str] = Field(
+        ...,
+        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
+        title="Patrol Types",
     )
-    drop_null_geometry: Optional[bool] = Field(
-        False,
-        description="Whether or not to keep events with no geometry data",
-        title="Drop Null Geometry",
+    event_types: List[str] = Field(
+        ...,
+        description="Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types. Only V1 Event Types can be analyzed at this time.",
+        title="Event Types",
+    )
+    include_null_geometry: Optional[bool] = Field(
+        True, title="Include Events Without a Geometry (point or polygon)"
     )
 
 
@@ -236,7 +254,7 @@ class BaseMapDefs(BaseModel):
             },
         ],
         description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
-        title="Set Map Base Layers",
+        title=" ",
     )
 
 
@@ -253,35 +271,36 @@ class ValueGrouper(RootModel[str]):
 
 
 class TrajectorySegmentFilter(BaseModel):
-    min_length_meters: Optional[float] = Field(
-        0.001, description="Minimum Segment Length in Meters", title="Min Length Meters"
+    min_length_meters: Optional[confloat(ge=0.001)] = Field(
+        0.001, title="Minimum Segment Length (Meters)"
     )
-    max_length_meters: Optional[float] = Field(
-        100000,
-        description="Maximum Segment Length in Meters",
-        title="Max Length Meters",
+    max_length_meters: Optional[confloat(gt=0.001)] = Field(
+        100000, title="Maximum Segment Length (Meters)"
     )
-    min_time_secs: Optional[float] = Field(
-        1, description="Minimum Segment Duration in Seconds", title="Min Time Secs"
+    min_time_secs: Optional[confloat(ge=1.0)] = Field(
+        1, title="Minimum Segment Duration (Seconds)"
     )
-    max_time_secs: Optional[float] = Field(
-        172800, description="Maximum Segment Duration in Seconds", title="Max Time Secs"
+    max_time_secs: Optional[confloat(gt=1.0)] = Field(
+        172800, title="Maximum Segment Duration (Seconds)"
     )
-    min_speed_kmhr: Optional[float] = Field(
-        0.0001,
-        description="Minimum Segment Speed in Kilometers per Hour",
-        title="Min Speed Kmhr",
+    min_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
+        0.01, title="Minimum Segment Speed (Kilometers per Hour)"
     )
-    max_speed_kmhr: Optional[float] = Field(
-        500,
-        description="Maximum Segment Speed in Kilometers per Hour",
-        title="Max Speed Kmhr",
+    max_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
+        500, title="Maximum Segment Speed (Kilometers per Hour)"
     )
+
+
+class BoundingBox(BaseModel):
+    min_y: Optional[float] = Field(-90.0, title="Min Latitude")
+    max_y: Optional[float] = Field(90.0, title="Max Latitude")
+    min_x: Optional[float] = Field(-180.0, title="Min Longitude")
+    max_x: Optional[float] = Field(180.0, title="Max Longitude")
 
 
 class Coordinate(BaseModel):
-    x: float = Field(..., title="X")
-    y: float = Field(..., title="Y")
+    y: float = Field(..., description="Example -0.15293", title="Latitude")
+    x: float = Field(..., description="Example 37.30906", title="Longitude")
 
 
 class LegendDefinition(BaseModel):
@@ -340,12 +359,12 @@ class PatrolTraj(BaseModel):
                 "max_length_meters": 100000,
                 "min_time_secs": 1,
                 "max_time_secs": 172800,
-                "min_speed_kmhr": 0.0001,
+                "min_speed_kmhr": 0.01,
                 "max_speed_kmhr": 500,
             }
         ),
-        description="Trajectory Segments outside these bounds will be removed",
-        title="Trajectory Segment Filter",
+        description="Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
+        title=" ",
     )
 
 
@@ -353,12 +372,17 @@ class FilterFetchedPatrolEvents(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    min_x: Optional[float] = Field(-180.0, title="Min X")
-    max_x: Optional[float] = Field(180.0, title="Max X")
-    min_y: Optional[float] = Field(-90.0, title="Min Y")
-    max_y: Optional[float] = Field(90.0, title="Max Y")
+    bounding_box: Optional[BoundingBox] = Field(
+        default_factory=lambda: BoundingBox.model_validate(
+            {"min_y": -90.0, "max_y": 90.0, "min_x": -180.0, "max_x": 180.0}
+        ),
+        description="Filter events to inside these bounding coordinates.",
+        title="Bounding Box",
+    )
     filter_point_coords: Optional[List[Coordinate]] = Field(
-        [], title="Filter Point Coords"
+        [],
+        description="By adding a filter, the workflow will not include events recorded at the specified coordinates.",
+        title="Filter Exact Point Coordinates",
     )
 
 
@@ -366,12 +390,17 @@ class FilterPatrolEvents(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    min_x: Optional[float] = Field(-180.0, title="Min X")
-    max_x: Optional[float] = Field(180.0, title="Max X")
-    min_y: Optional[float] = Field(-90.0, title="Min Y")
-    max_y: Optional[float] = Field(90.0, title="Max Y")
+    bounding_box: Optional[BoundingBox] = Field(
+        default_factory=lambda: BoundingBox.model_validate(
+            {"min_y": -90.0, "max_y": 90.0, "min_x": -180.0, "max_x": 180.0}
+        ),
+        description="Filter events to inside these bounding coordinates.",
+        title="Bounding Box",
+    )
     filter_point_coords: Optional[List[Coordinate]] = Field(
-        [], title="Filter Point Coords"
+        [],
+        description="By adding a filter, the workflow will not include events recorded at the specified coordinates.",
+        title="Filter Exact Point Coordinates",
     )
 
 
@@ -422,6 +451,7 @@ class Params(BaseModel):
     )
     er_patrol_types: Optional[ErPatrolTypes] = Field(None, title="")
     er_patrol_status: Optional[ErPatrolStatus] = Field(None, title="")
+    patrol_obs: Optional[PatrolObs] = Field(None, title="")
     fetch_patrol_events: Optional[FetchPatrolEvents] = Field(None, title="")
     groupers: Optional[Groupers] = Field(None, title="Group Data")
     patrol_traj: Optional[PatrolTraj] = Field(None, title="Trajectories")
