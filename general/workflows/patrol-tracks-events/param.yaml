@@ -4,7 +4,7 @@ workflow_details:
 
 er_client_name:
   data_source:
-    name: "demo" # Ecoscope
+    name: "mep" # Ecoscope
 
 er_patrol_types:
   patrol_types: [ ]
@@ -16,8 +16,8 @@ fetch_patrol_events:
     event_type: []
     drop_null_geometry: false
 time_range:
-  since: "2024-01-01T00:00:00Z"
-  until: "2024-12-31T23:59:59Z"
+  since: "2025-03-01T00:00:00Z"
+  until: "2025-03-31T23:59:59Z"
 
 groupers:
   groupers:
