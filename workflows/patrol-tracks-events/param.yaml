@@ -13,8 +13,7 @@ er_patrol_status:
   status: ["done"]
 
 fetch_patrol_events:
-  patrol_types: ["MEP_routine_vehicle_patrol_bravo_team"]
-  event_types: [  # Changed from 'event_type' to 'event_types'
+  event_types: [
       'mep_dead_animal',
       'mep_live_animal',
       'mep_event_cleaning',
