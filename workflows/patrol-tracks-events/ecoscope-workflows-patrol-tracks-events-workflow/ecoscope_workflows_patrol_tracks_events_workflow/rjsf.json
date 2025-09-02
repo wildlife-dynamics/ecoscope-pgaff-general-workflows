@@ -59,97 +59,77 @@
       "description": "Choose the period of time to analyze.",
       "title": "Time Range"
     },
-    "er_patrol_types": {
-      "additionalProperties": false,
-      "properties": {
-        "patrol_types": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Patrol Types",
-          "type": "array",
-          "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
-        }
-      },
-      "required": [
-        "patrol_types"
-      ],
+    "Patrol and Event Types": {
       "type": "object",
-      "title": ""
-    },
-    "er_patrol_status": {
-      "additionalProperties": false,
+      "description": "Patrol Events",
+      "ecoscope:task_group": true,
       "properties": {
-        "status": {
-          "default": null,
-          "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
-          "ecoscope:advanced": true,
-          "items": {
-            "enum": [
-              "active",
-              "overdue",
-              "done",
-              "cancelled"
-            ],
-            "type": "string"
+        "er_patrol_types": {
+          "additionalProperties": false,
+          "properties": {
+            "patrol_types": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Patrol Types",
+              "type": "array",
+              "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
+            }
           },
-          "title": "Status",
-          "type": "array"
-        }
-      },
-      "type": "object",
-      "required": [],
-      "title": ""
-    },
-    "patrol_obs": {
-      "additionalProperties": false,
-      "properties": {
-        "patrol_types": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Patrol Types",
-          "type": "array",
-          "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
-        }
-      },
-      "required": [
-        "patrol_types"
-      ],
-      "type": "object",
-      "title": ""
-    },
-    "fetch_patrol_events": {
-      "additionalProperties": false,
-      "properties": {
-        "patrol_types": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Patrol Types",
-          "type": "array",
-          "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
+          "required": [
+            "patrol_types"
+          ],
+          "type": "object",
+          "title": ""
         },
-        "event_types": {
-          "items": {
-            "type": "string"
+        "er_patrol_status": {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "default": null,
+              "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
+              "ecoscope:advanced": true,
+              "items": {
+                "enum": [
+                  "active",
+                  "overdue",
+                  "done",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              "title": "Status",
+              "type": "array"
+            }
           },
-          "title": "Event Types",
-          "type": "array",
-          "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types. Only V1 Event Types can be analyzed at this time."
+          "type": "object",
+          "required": [],
+          "title": ""
         },
-        "include_null_geometry": {
-          "default": true,
-          "title": "Include Events Without a Geometry (point or polygon)",
-          "type": "boolean"
+        "fetch_patrol_events": {
+          "additionalProperties": false,
+          "properties": {
+            "event_types": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Event Types",
+              "type": "array",
+              "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types. Only V1 Event Types can be analyzed at this time."
+            },
+            "include_null_geometry": {
+              "default": true,
+              "title": "Include Events Without a Geometry (point or polygon)",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "event_types"
+          ],
+          "type": "object",
+          "title": ""
         }
-      },
-      "required": [
-        "patrol_types",
-        "event_types"
-      ],
-      "type": "object",
-      "title": ""
+      }
     },
     "groupers": {
       "additionalProperties": false,
@@ -176,99 +156,79 @@
       "required": [],
       "title": "Group Data"
     },
-    "patrol_traj": {
-      "additionalProperties": false,
-      "properties": {
-        "trajectory_segment_filter": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/TrajectorySegmentFilter"
-            }
-          ],
-          "default": {
-            "min_length_meters": 0.001,
-            "max_length_meters": 100000,
-            "min_time_secs": 1,
-            "max_time_secs": 172800,
-            "min_speed_kmhr": 0.01,
-            "max_speed_kmhr": 500
-          },
-          "title": " ",
-          "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
+    "Preprocess patrol observations": {
       "type": "object",
-      "title": "Trajectories"
+      "description": "Preprocessing patrol obs",
+      "ecoscope:task_group": true,
+      "properties": {
+        "patrol_traj": {
+          "additionalProperties": false,
+          "properties": {
+            "trajectory_segment_filter": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/TrajectorySegmentFilter"
+                }
+              ],
+              "default": {
+                "min_length_meters": 0.001,
+                "max_length_meters": 100000,
+                "min_time_secs": 1,
+                "max_time_secs": 172800,
+                "min_speed_kmhr": 0.01,
+                "max_speed_kmhr": 500
+              },
+              "title": " ",
+              "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
+              "ecoscope:advanced": true
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Trajectories"
+        }
+      }
     },
-    "filter_fetched_patrol_events": {
-      "additionalProperties": false,
-      "properties": {
-        "bounding_box": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/BoundingBox"
-            }
-          ],
-          "default": {
-            "min_y": -90.0,
-            "max_y": 90.0,
-            "min_x": -180.0,
-            "max_x": 180.0
-          },
-          "title": "Bounding Box",
-          "description": "Filter events to inside these bounding coordinates.",
-          "ecoscope:advanced": true
-        },
-        "filter_point_coords": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/Coordinate"
-          },
-          "title": "Filter Exact Point Coordinates",
-          "type": "array",
-          "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
+    "Preprocess patrol events": {
       "type": "object",
-      "title": "Apply Coordinate Filter"
-    },
-    "filter_patrol_events": {
-      "additionalProperties": false,
+      "description": "patrol events oo12",
+      "ecoscope:task_group": true,
       "properties": {
-        "bounding_box": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/BoundingBox"
+        "filter_patrol_events": {
+          "additionalProperties": false,
+          "properties": {
+            "bounding_box": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/BoundingBox"
+                }
+              ],
+              "default": {
+                "min_y": -90.0,
+                "max_y": 90.0,
+                "min_x": -180.0,
+                "max_x": 180.0
+              },
+              "title": "Bounding Box",
+              "description": "Filter events to inside these bounding coordinates.",
+              "ecoscope:advanced": true
+            },
+            "filter_point_coords": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/Coordinate"
+              },
+              "title": "Filter Exact Point Coordinates",
+              "type": "array",
+              "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
+              "ecoscope:advanced": true
             }
-          ],
-          "default": {
-            "min_y": -90.0,
-            "max_y": 90.0,
-            "min_x": -180.0,
-            "max_x": 180.0
           },
-          "title": "Bounding Box",
-          "description": "Filter events to inside these bounding coordinates.",
-          "ecoscope:advanced": true
-        },
-        "filter_point_coords": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/Coordinate"
-          },
-          "title": "Filter Exact Point Coordinates",
-          "type": "array",
-          "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
-          "ecoscope:advanced": true
+          "required": [],
+          "type": "object",
+          "title": "Apply Coordinate Filter"
         }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Apply Coordinate Filter"
+      }
     },
     "base_map_defs": {
       "additionalProperties": false,
@@ -470,59 +430,66 @@
       "required": [],
       "title": "Base Maps"
     },
-    "patrol_traj_map_layers": {
-      "additionalProperties": false,
-      "properties": {
-        "legend": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/LegendDefinition"
-            }
-          ],
-          "default": null,
-          "title": "Legend",
-          "description": "If present, includes this layer in the map legend",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
+    "Ecomap Generation": {
       "type": "object",
-      "title": "Create Trajectory Map Layers"
-    },
-    "traj_patrol_events_ecomap": {
-      "additionalProperties": false,
+      "description": "Generate Ecomap",
+      "ecoscope:task_group": true,
       "properties": {
-        "title": {
-          "default": null,
-          "title": "Title",
-          "type": "string",
-          "description": "            The map title. Note this is the title drawn on the map canvas itself, and will result\n            in duplicate titles if set in the context of a dashboard in which the iframe/widget\n            container also has a title set on it.\n            ",
-          "ecoscope:advanced": true
-        },
-        "north_arrow_style": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/NorthArrowStyle"
+        "patrol_traj_map_layers": {
+          "additionalProperties": false,
+          "properties": {
+            "legend": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/LegendDefinition"
+                }
+              ],
+              "default": null,
+              "title": "Legend",
+              "description": "If present, includes this layer in the map legend",
+              "ecoscope:advanced": true
             }
-          ],
-          "default": null,
-          "title": "North Arrow Style",
-          "description": "Additional arguments for configuring the North Arrow."
+          },
+          "required": [],
+          "type": "object",
+          "title": "Create Trajectory Map Layers"
         },
-        "legend_style": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/LegendStyle"
+        "traj_patrol_events_ecomap": {
+          "additionalProperties": false,
+          "properties": {
+            "title": {
+              "default": null,
+              "title": "Title",
+              "type": "string",
+              "description": "            The map title. Note this is the title drawn on the map canvas itself, and will result\n            in duplicate titles if set in the context of a dashboard in which the iframe/widget\n            container also has a title set on it.\n            ",
+              "ecoscope:advanced": true
+            },
+            "north_arrow_style": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/NorthArrowStyle"
+                }
+              ],
+              "default": null,
+              "title": "North Arrow Style",
+              "description": "Additional arguments for configuring the North Arrow."
+            },
+            "legend_style": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/LegendStyle"
+                }
+              ],
+              "default": null,
+              "title": "Legend Style",
+              "description": "Additional arguments for configuring the legend."
             }
-          ],
-          "default": null,
-          "title": "Legend Style",
-          "description": "Additional arguments for configuring the legend."
+          },
+          "required": [],
+          "type": "object",
+          "title": "Draw Ecomaps"
         }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Draw Ecomaps"
+      }
     }
   },
   "$defs": {
@@ -780,47 +747,56 @@
         "until"
       ]
     },
-    "fetch_patrol_events": {
+    "Patrol and Event Types": {
       "ui:order": [
-        "patrol_types",
-        "event_types",
-        "include_null_geometry"
-      ]
+        "er_patrol_types",
+        "er_patrol_status",
+        "fetch_patrol_events"
+      ],
+      "fetch_patrol_events": {
+        "ui:order": [
+          "event_types",
+          "include_null_geometry"
+        ]
+      }
     },
-    "filter_fetched_patrol_events": {
-      "ui:order": [
-        "bounding_box",
-        "filter_point_coords"
-      ]
+    "Preprocess patrol events": {
+      "filter_fetched_patrol_events": {
+        "ui:order": [
+          "bounding_box",
+          "filter_point_coords"
+        ]
+      },
+      "filter_patrol_events": {
+        "ui:order": [
+          "bounding_box",
+          "filter_point_coords"
+        ]
+      }
     },
-    "filter_patrol_events": {
+    "Ecomap Generation": {
       "ui:order": [
-        "bounding_box",
-        "filter_point_coords"
-      ]
-    },
-    "traj_patrol_events_ecomap": {
-      "ui:order": [
-        "title",
-        "north_arrow_style",
-        "legend_style"
-      ]
+        "patrol_traj_map_layers",
+        "traj_patrol_events_ecomap"
+      ],
+      "traj_patrol_events_ecomap": {
+        "ui:order": [
+          "title",
+          "north_arrow_style",
+          "legend_style"
+        ]
+      }
     },
     "ui:order": [
       "workflow_details",
       "er_client_name",
       "time_range",
-      "er_patrol_types",
-      "er_patrol_status",
-      "patrol_obs",
-      "fetch_patrol_events",
+      "Patrol and Event Types",
       "groupers",
-      "patrol_traj",
-      "filter_fetched_patrol_events",
-      "filter_patrol_events",
+      "Preprocess patrol observations",
+      "Preprocess patrol events",
       "base_map_defs",
-      "patrol_traj_map_layers",
-      "traj_patrol_events_ecomap"
+      "Ecomap Generation"
     ]
   },
   "additionalProperties": false

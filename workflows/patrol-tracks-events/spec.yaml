@@ -42,7 +42,7 @@ workflow:
         partial:
           client: ${{ workflow.er_client_name.return }}
           time_range: ${{ workflow.time_range.return }}
-          patrol_type: ${{ workflow.er_patrol_types.return }}
+          patrol_types: ${{ workflow.er_patrol_types.return }}
           status: ${{ workflow.er_patrol_status.return }}
           include_patrol_details: true
           raise_on_empty: false
@@ -51,7 +51,7 @@ workflow:
         partial:
           client: ${{ workflow.er_client_name.return }}
           time_range: ${{ workflow.time_range.return }}
-          patrol_type: ${{ workflow.er_patrol_types.return }}
+          patrol_types: ${{ workflow.er_patrol_types.return }}
           status: ${{ workflow.er_patrol_status.return }}
           truncate_to_time_range: true
           raise_on_empty: false
@@ -228,7 +228,7 @@ workflow:
 
   - name: Persist Patrol Trajectories as Parquet
     id: persist_traj_parquet
-    task: save_dataframe
+    task: persist_df
     partial:
       df: ${{ workflow.patrol_traj.return }}
       filename: "patrol_trajectories"
@@ -246,7 +246,7 @@ workflow:
 
   - name: Persist Patrol Events as Parquet
     id: persist_events_parquet
-    task: save_dataframe
+    task: persist_df
     partial:
       df: ${{ workflow.filter_patrol_events.return }}
       filename: "patrol_events"

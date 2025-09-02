@@ -35,7 +35,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
 from ecoscope_workflows_core.tasks.transformation import convert_column_values_to_string
 from ecoscope_workflows_core.tasks.groupby import split_groups
 from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df
-from ecoscope_workflows_ext_general.tasks import save_dataframe
 from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
 from ecoscope_workflows_ext_ecoscope.tasks.results import create_point_layer
 from ecoscope_workflows_ext_ecoscope.tasks.results import create_polyline_layer
@@ -196,9 +195,7 @@ er_patrol_status = (
 # %%
 # parameters
 
-patrol_obs_params = dict(
-    patrol_types=...,
-)
+patrol_obs_params = dict()
 
 # %%
 # call the task
@@ -216,7 +213,7 @@ patrol_obs = (
     .partial(
         client=er_client_name,
         time_range=time_range,
-        patrol_type=er_patrol_types,
+        patrol_types=er_patrol_types,
         status=er_patrol_status,
         include_patrol_details=True,
         raise_on_empty=False,
@@ -233,7 +230,6 @@ patrol_obs = (
 # parameters
 
 fetch_patrol_events_params = dict(
-    patrol_types=...,
     event_types=...,
     include_null_geometry=...,
 )
@@ -254,7 +250,7 @@ fetch_patrol_events = (
     .partial(
         client=er_client_name,
         time_range=time_range,
-        patrol_type=er_patrol_types,
+        patrol_types=er_patrol_types,
         status=er_patrol_status,
         truncate_to_time_range=True,
         raise_on_empty=False,
@@ -808,7 +804,7 @@ persist_traj_parquet_params = dict()
 
 
 persist_traj_parquet = (
-    save_dataframe.handle_errors(task_instance_id="persist_traj_parquet")
+    persist_df.handle_errors(task_instance_id="persist_traj_parquet")
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -872,7 +868,7 @@ persist_events_parquet_params = dict()
 
 
 persist_events_parquet = (
-    save_dataframe.handle_errors(task_instance_id="persist_events_parquet")
+    persist_df.handle_errors(task_instance_id="persist_events_parquet")
     .skipif(
         conditions=[
             any_is_empty_df,

@@ -1,0 +1,89 @@
+workflow_details:
+  name: "Patrol Tracks Events Workflow"
+  description: "Process and visualize patrol observations and events."
+
+er_client_name:
+  data_source:
+    name: "mep" # Ecoscope
+
+er_patrol_types:
+  patrol_types: ["MEP_routine_vehicle_patrol_bravo_team"]
+
+er_patrol_status:
+  status: ["done"]
+
+fetch_patrol_events:
+  patrol_types: ["MEP_routine_vehicle_patrol_bravo_team"]
+  event_types: [  # Changed from 'event_type' to 'event_types'
+      'mep_dead_animal',
+      'mep_live_animal',
+      'mep_event_cleaning',
+      'mep_illegal_bushmeat',
+      'mep_virtual_ranger',
+      'mep_fleet_management',
+      'arrest_test',
+      'swt_veterinary_treatment',
+      'mep_drone_form',
+      'mep_recovered_trophiesss',
+      'mep_community_engagement',
+      'community_testing',
+      'mep_distance_count',
+      'acoustic_detection',
+      'environmental_all_clear',
+      'drone_testing',
+      'mep_elephant_sighting',
+      'mep_school_programme',
+      'environmental_value',
+      'mep_visitors',
+      'mep_translocation',
+      'mep_elephant_test_sighting',
+      'mep_illegal_logging',
+      'firms_rep',
+      'mep_collaring',
+      'mep_illegal_charcoal',
+      'mep_snares',
+      'upload_testing',
+      'mep_illegal_wildlife_trap',
+      'mep_patrol_target',
+      'mep_source_failure',
+      'mep_lulc',
+      'gfwfirealert',
+      'gfwgladalert',
+      'mep_collar_check',
+      'mep_hwc_mitigation_event',
+      'mep_arrest',
+      'silence_source_provider_rep',
+      'mep_mike',
+      'silence_source_rep',
+      'subject_proximity',
+      'carcass',
+      'cameratrap_rep',
+      'mep_recovered_trophies',
+      'immobility',
+      'immobility_all_clear',
+      'low_speed_wilcoxon',
+      'low_speed_wilcoxon_all_clear',
+      'low_speed_percentile',
+      'geofence_break',
+      'proximity',
+      'mep_camera_trap',
+      'mep_lcc',
+      'vet',
+      'mep_gda_visit']
+    # Removed 'drop_null_geometry: false' as it's not permitted
+
+time_range:
+  since: "2025-03-25T00:00:00Z"
+  until: "2025-03-31T23:59:59Z"
+
+groupers:
+  groupers:
+    - "%B"
+
+base_map_defs:
+  base_maps:
+    - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+      opacity: 0.1
+    - url: "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer/tile/{z}/{y}/{x}"
+      opacity: 0.8
+      max_zoom: 17

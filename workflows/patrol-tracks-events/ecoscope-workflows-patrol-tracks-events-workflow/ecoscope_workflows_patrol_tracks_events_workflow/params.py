@@ -62,25 +62,9 @@ class ErPatrolStatus(BaseModel):
     )
 
 
-class PatrolObs(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    patrol_types: List[str] = Field(
-        ...,
-        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
-        title="Patrol Types",
-    )
-
-
 class FetchPatrolEvents(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
-    )
-    patrol_types: List[str] = Field(
-        ...,
-        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
-        title="Patrol Types",
     )
     event_types: List[str] = Field(
         ...,
@@ -90,13 +74,6 @@ class FetchPatrolEvents(BaseModel):
     include_null_geometry: Optional[bool] = Field(
         True, title="Include Events Without a Geometry (point or polygon)"
     )
-
-
-class PatrolAndEventTypes(BaseModel):
-    er_patrol_types: Optional[ErPatrolTypes] = Field(None, title="")
-    er_patrol_status: Optional[ErPatrolStatus] = Field(None, title="")
-    patrol_obs: Optional[PatrolObs] = Field(None, title="")
-    fetch_patrol_events: Optional[FetchPatrolEvents] = Field(None, title="")
 
 
 class Url(str, Enum):
@@ -375,11 +352,7 @@ class PatrolTraj(BaseModel):
     )
 
 
-class PreprocessPatrolObservations(BaseModel):
-    patrol_traj: Optional[PatrolTraj] = Field(None, title="Trajectories")
-
-
-class FilterPatrolEvents(BaseModel):
+class FilterFetchedPatrolEvents(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -397,9 +370,21 @@ class FilterPatrolEvents(BaseModel):
     )
 
 
-class PreprocessPatrolEvents(BaseModel):
-    filter_patrol_events: Optional[FilterPatrolEvents] = Field(
-        None, title="Apply Coordinate Filter"
+class FilterPatrolEvents(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    bounding_box: Optional[BoundingBox] = Field(
+        default_factory=lambda: BoundingBox.model_validate(
+            {"min_y": -90.0, "max_y": 90.0, "min_x": -180.0, "max_x": 180.0}
+        ),
+        description="Filter events to inside these bounding coordinates.",
+        title="Bounding Box",
+    )
+    filter_point_coords: Optional[List[Coordinate]] = Field(
+        [],
+        description="By adding a filter, the workflow will not include events recorded at the specified coordinates.",
+        title="Filter Exact Point Coordinates",
     )
 
 
@@ -435,16 +420,7 @@ class TrajPatrolEventsEcomap(BaseModel):
     )
 
 
-class EcomapGeneration(BaseModel):
-    patrol_traj_map_layers: Optional[PatrolTrajMapLayers] = Field(
-        None, title="Create Trajectory Map Layers"
-    )
-    traj_patrol_events_ecomap: Optional[TrajPatrolEventsEcomap] = Field(
-        None, title="Draw Ecomaps"
-    )
-
-
-class FormData(BaseModel):
+class Params(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -457,19 +433,21 @@ class FormData(BaseModel):
     time_range: Optional[TimeRange] = Field(
         None, description="Choose the period of time to analyze.", title="Time Range"
     )
-    Patrol_and_Event_Types: Optional[PatrolAndEventTypes] = Field(
-        None, alias="Patrol and Event Types", description="Patrol Events"
-    )
+    er_patrol_types: Optional[ErPatrolTypes] = Field(None, title="")
+    er_patrol_status: Optional[ErPatrolStatus] = Field(None, title="")
+    fetch_patrol_events: Optional[FetchPatrolEvents] = Field(None, title="")
     groupers: Optional[Groupers] = Field(None, title="Group Data")
-    Preprocess_patrol_observations: Optional[PreprocessPatrolObservations] = Field(
-        None,
-        alias="Preprocess patrol observations",
-        description="Preprocessing patrol obs",
+    patrol_traj: Optional[PatrolTraj] = Field(None, title="Trajectories")
+    filter_fetched_patrol_events: Optional[FilterFetchedPatrolEvents] = Field(
+        None, title="Apply Coordinate Filter"
     )
-    Preprocess_patrol_events: Optional[PreprocessPatrolEvents] = Field(
-        None, alias="Preprocess patrol events", description="patrol events oo12"
+    filter_patrol_events: Optional[FilterPatrolEvents] = Field(
+        None, title="Apply Coordinate Filter"
     )
     base_map_defs: Optional[BaseMapDefs] = Field(None, title="Base Maps")
-    Ecomap_Generation: Optional[EcomapGeneration] = Field(
-        None, alias="Ecomap Generation", description="Generate Ecomap"
+    patrol_traj_map_layers: Optional[PatrolTrajMapLayers] = Field(
+        None, title="Create Trajectory Map Layers"
+    )
+    traj_patrol_events_ecomap: Optional[TrajPatrolEventsEcomap] = Field(
+        None, title="Draw Ecomaps"
     )
