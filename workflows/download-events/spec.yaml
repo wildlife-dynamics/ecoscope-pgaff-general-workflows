@@ -55,26 +55,23 @@ workflow:
       df: ${{ workflow.normalize_event_details.return }}
       prefix: "event_details__"
 
-  - name: Process Columns by Ecoscope # This task processes columns using Ecoscope's standard procedures
-    id: preprocess_columns
-    task: map_columns
-    partial:
-      df: ${{ workflow.drop_event_details_prefix.return }}
-      rename_columns:
-        time: event_time
-      
-
-  - name: Process Columns # This task is for customer's too
+  - name: Process Columns # This task is for customer's to add any custom column processing steps
     id: process_columns
     task: map_columns
     partial:
-      df: ${{ workflow.preprocess_columns.return }}
+      df: ${{ workflow.drop_event_details_prefix.return }}
+
+  - name: Apply SQL Query
+    id: sql_query
+    task: apply_sql_query
+    partial:
+      df: ${{ workflow.process_columns.return }}
 
   - name: Persist Events
     id: persist_events
     task: persist_df_wrapper
     partial:
-      df: ${{ workflow.process_columns.return }}
+      df: ${{ workflow.sql_query.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
 
   - name: Gather Output Files

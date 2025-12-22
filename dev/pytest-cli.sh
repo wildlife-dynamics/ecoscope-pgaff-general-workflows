@@ -70,6 +70,14 @@ if ! yq -e ".\"${test_case}\"" "$test_cases_file" > /dev/null 2>&1; then
     exit 1
 fi
 
+# Extract mock_io setting from test case (defaults to true if not specified)
+if yq -e ".\"${test_case}\" | has(\"mock_io\")" "$test_cases_file" > /dev/null 2>&1; then
+    use_mock_io=$(yq ".\"${test_case}\".mock_io" "$test_cases_file")
+else
+    use_mock_io="true"
+fi
+echo "Mock IO mode: $use_mock_io"
+
 # Create temporary results directory (cross-platform compatible)
 # Use RUNNER_TEMP if available (GitHub Actions), otherwise fall back to /tmp
 temp_base="${RUNNER_TEMP:-/tmp}"
@@ -97,9 +105,17 @@ echo ""
 
 cd "$workflow_dir"
 workflow_underscore=$(echo $workflow_name | tr '-' '_')
-run_cmd python -m ecoscope_workflows_${workflow_underscore}_workflow.cli run \
-    --config-file "$params_file" --execution-mode sequential \
-    --mock-io
+
+# Build the command with conditional --mock-io flag
+cmd="python -m ecoscope_workflows_${workflow_underscore}_workflow.cli run --config-file \"$params_file\" --execution-mode sequential"
+if [ "$use_mock_io" = "true" ]; then
+    cmd="$cmd --mock-io"
+fi
+
+echo "Command: $cmd"
+echo ""
+run_cmd $cmd
+
 
 # Validate result.json
 result_json="${results_dir}/result.json"

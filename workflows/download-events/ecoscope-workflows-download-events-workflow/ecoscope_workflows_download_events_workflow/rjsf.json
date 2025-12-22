@@ -131,34 +131,6 @@
       "type": "object",
       "title": "Normalize Event Details"
     },
-    "preprocess_columns": {
-      "additionalProperties": false,
-      "properties": {
-        "drop_columns": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "title": "Drop Columns",
-          "type": "array",
-          "description": "List of columns to drop.",
-          "ecoscope:advanced": true
-        },
-        "retain_columns": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "title": "Retain Columns",
-          "type": "array",
-          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Process Columns by Ecoscope"
-    },
     "process_columns": {
       "additionalProperties": false,
       "properties": {
@@ -196,6 +168,21 @@
       "required": [],
       "type": "object",
       "title": "Process Columns"
+    },
+    "sql_query": {
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "title": "Query",
+          "type": "string",
+          "description": "SQL query string to apply to the DataFrame. Use 'df' as the table name in the query."
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object",
+      "title": "Apply SQL Query"
     },
     "persist_events": {
       "additionalProperties": false,
@@ -351,12 +338,6 @@
         "filter_point_coords"
       ]
     },
-    "preprocess_columns": {
-      "ui:order": [
-        "drop_columns",
-        "retain_columns"
-      ]
-    },
     "process_columns": {
       "ui:order": [
         "drop_columns",
@@ -377,8 +358,8 @@
       "get_event_data",
       "filter_events",
       "normalize_event_details",
-      "preprocess_columns",
       "process_columns",
+      "sql_query",
       "persist_events"
     ]
   },
