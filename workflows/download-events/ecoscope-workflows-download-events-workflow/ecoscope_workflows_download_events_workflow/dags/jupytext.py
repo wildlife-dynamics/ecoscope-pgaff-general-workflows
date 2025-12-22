@@ -4,7 +4,7 @@
 # ruff: noqa: E402
 
 # %% [markdown]
-# # Er Events
+# # Download Events
 # TODO: top level description
 
 # %% [markdown]

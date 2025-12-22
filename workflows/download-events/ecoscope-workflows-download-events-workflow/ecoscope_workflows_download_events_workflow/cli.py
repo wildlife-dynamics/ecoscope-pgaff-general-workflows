@@ -33,7 +33,7 @@ from .metadata import (
 )
 from .params import Params
 
-RELEASE_NAME = "ecoscope-workflows-er-events-workflow"
+RELEASE_NAME = "ecoscope-workflows-download-events-workflow"
 
 
 @click.group()

@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pydantic
 import pytest
-from ecoscope_workflows_er_events_workflow.formdata import FormData
-from ecoscope_workflows_er_events_workflow.params import Params
+from ecoscope_workflows_download_events_workflow.formdata import FormData
+from ecoscope_workflows_download_events_workflow.params import Params
 from ecoscope_workflows_runner.app import app
 from ecoscope_workflows_runner.testing import Case
 from fastapi.testclient import TestClient

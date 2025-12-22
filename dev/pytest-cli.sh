@@ -6,19 +6,25 @@ set -e  # Exit on error
 workflow_name=$1
 test_case=$2
 skip_setup=false
+local_mode=false
 
-# Check for --skip-setup flag
+# Check for flags
 for arg in "$@"; do
     if [ "$arg" = "--skip-setup" ]; then
         skip_setup=true
     fi
+    if [ "$arg" = "--local" ]; then
+        local_mode=true
+        skip_setup=true  # --local implies --skip-setup
+    fi
 done
 
 if [ -z "$workflow_name" ] || [ -z "$test_case" ]; then
-    echo "Usage: $0 <workflow_name> <test_case> [--skip-setup]"
+    echo "Usage: $0 <workflow_name> <test_case> [--skip-setup] [--local]"
     echo "Example: $0 mapbook_report all-grouper"
     echo "Options:"
     echo "  --skip-setup    Skip pixi update and playwright-install steps"
+    echo "  --local         Run commands directly without pixi (implies --skip-setup)"
     exit 1
 fi
 
@@ -33,17 +39,29 @@ test_cases_file="${repo_root}/workflows/${workflow_name}/test-cases.yaml"
 echo "=========================================="
 echo "Workflow: $workflow_name"
 echo "Test case: $test_case"
+echo "Mode: $([ "$local_mode" = true ] && echo "LOCAL" || echo "PIXI")"
 echo "=========================================="
+
+# Helper function to run commands with or without pixi
+run_cmd() {
+    if [ "$local_mode" = true ]; then
+        # Run command directly
+        eval "$@"
+    else
+        # Run command with pixi
+        pixi run --manifest-path $manifest_path --locked -e default "$@"
+    fi
+}
 
 # Optional setup steps
 if [ "$skip_setup" = false ]; then
     echo "Updating pixi environment..."
     pixi update --manifest-path $manifest_path
     echo "Installing playwright..."
-    pixi run --manifest-path $manifest_path --locked -e default pip install playwright
-    pixi run --manifest-path $manifest_path --locked -e default bash -c "playwright install --with-deps chromium"
+    run_cmd pip install playwright
+    run_cmd bash -c "playwright install --with-deps chromium"
 else
-    echo "Skipping pixi update and playwright-install (--skip-setup flag provided)"
+    echo "Skipping pixi update and playwright-install (--skip-setup or --local flag provided)"
 fi
 
 # Verify test case exists
@@ -79,8 +97,7 @@ echo ""
 
 cd "$workflow_dir"
 workflow_underscore=$(echo $workflow_name | tr '-' '_')
-pixi run --manifest-path $manifest_path -e default \
-    python -m ecoscope_workflows_${workflow_underscore}_workflow.cli run \
+run_cmd python -m ecoscope_workflows_${workflow_underscore}_workflow.cli run \
     --config-file "$params_file" --execution-mode sequential \
     --mock-io
 
