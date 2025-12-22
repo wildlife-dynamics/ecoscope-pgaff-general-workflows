@@ -1,0 +1,49 @@
+base:
+  name: Base Test Case
+  params:
+    time_range:
+      since: "2025-08-01"
+      until: "2025-08-31"
+    er_client_name:
+      data_source:
+        name: "mep_dev"
+    get_event_data:
+      event_columns: ["id", "time", "event_type", "event_category", "reported_by", "serial_number", "geometry"]
+      event_types: ["arrest_rep", "snare_rep", "poacher_camp_rep"]
+    filter_events:
+      filter_point_coords: [
+        {"x": 180.0, "y": 90.0},
+        {"x": 0.0, "y": 0.0},
+        {"x": 1.0, "y": 1.0},
+      ]
+    process_columns:
+      rename_columns:
+        time: event_time
+    persist_events:
+      filetypes: ["geoparquet", "csv"]
+      sanitize: false
+
+with-details:
+  name: With Event Details
+  params:
+    time_range:
+      since: "2025-08-01"
+      until: "2025-08-31"
+    er_client_name:
+      data_source:
+        name: "mep_dev"
+    get_event_data:
+      event_columns: ["id", "time", "event_type", "event_category", "reported_by", "serial_number", "geometry", "event_details"]
+      event_types: ["arrest_rep", "snare_rep", "poacher_camp_rep"]
+    filter_events:
+      filter_point_coords: [
+        {"x": 180.0, "y": 90.0},
+        {"x": 0.0, "y": 0.0},
+        {"x": 1.0, "y": 1.0},
+      ]
+    process_columns:
+      rename_columns:
+        time: event_time
+    persist_events:
+      filetypes: ["geoparquet", "csv"]
+      sanitize: true
