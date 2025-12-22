@@ -1,4 +1,4 @@
-id: er_events
+id: download_events
 requirements:
   - name: ecoscope-workflows-core
     version: ">=0.19.2,<0.20"
