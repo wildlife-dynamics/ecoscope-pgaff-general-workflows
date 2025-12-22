@@ -12,6 +12,9 @@ from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
+    apply_sql_query as apply_sql_query,
+)
+from ecoscope_workflows_ext_custom.tasks.transformation import (
     drop_column_prefix as drop_column_prefix,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
@@ -104,25 +107,23 @@ def main(params: Params):
         .call()
     )
 
-    preprocess_columns = (
-        map_columns.validate()
-        .set_task_instance_id("preprocess_columns")
-        .handle_errors()
-        .with_tracing()
-        .partial(
-            df=drop_event_details_prefix,
-            rename_columns={"time": "event_time"},
-            **(params_dict.get("preprocess_columns") or {}),
-        )
-        .call()
-    )
-
     process_columns = (
         map_columns.validate()
         .set_task_instance_id("process_columns")
         .handle_errors()
         .with_tracing()
-        .partial(df=preprocess_columns, **(params_dict.get("process_columns") or {}))
+        .partial(
+            df=drop_event_details_prefix, **(params_dict.get("process_columns") or {})
+        )
+        .call()
+    )
+
+    sql_query = (
+        apply_sql_query.validate()
+        .set_task_instance_id("sql_query")
+        .handle_errors()
+        .with_tracing()
+        .partial(df=process_columns, **(params_dict.get("sql_query") or {}))
         .call()
     )
 
@@ -132,7 +133,7 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            df=process_columns,
+            df=sql_query,
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             **(params_dict.get("persist_events") or {}),
         )

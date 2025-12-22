@@ -40,20 +40,6 @@ class NormalizeEventDetails(BaseModel):
     )
 
 
-class PreprocessColumns(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    drop_columns: Optional[List[str]] = Field(
-        [], description="List of columns to drop.", title="Drop Columns"
-    )
-    retain_columns: Optional[List[str]] = Field(
-        [],
-        description='List of columns to retain with the order specified by the list.\n                        "Keep all the columns if the list is empty.',
-        title="Retain Columns",
-    )
-
-
 class ProcessColumns(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -68,6 +54,17 @@ class ProcessColumns(BaseModel):
     )
     rename_columns: Optional[Dict[str, str]] = Field(
         {}, description="Dictionary of columns to rename.", title="Rename Columns"
+    )
+
+
+class SqlQuery(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    query: str = Field(
+        ...,
+        description="SQL query string to apply to the DataFrame. Use 'df' as the table name in the query.",
+        title="Query",
     )
 
 
@@ -170,8 +167,6 @@ class Params(BaseModel):
     normalize_event_details: Optional[NormalizeEventDetails] = Field(
         None, title="Normalize Event Details"
     )
-    preprocess_columns: Optional[PreprocessColumns] = Field(
-        None, title="Process Columns by Ecoscope"
-    )
     process_columns: Optional[ProcessColumns] = Field(None, title="Process Columns")
+    sql_query: Optional[SqlQuery] = Field(None, title="Apply SQL Query")
     persist_events: Optional[PersistEvents] = Field(None, title="Persist Events")
