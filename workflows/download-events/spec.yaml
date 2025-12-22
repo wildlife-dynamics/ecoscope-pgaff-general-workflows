@@ -1,0 +1,85 @@
+id: er_events
+requirements:
+  - name: ecoscope-workflows-core
+    version: ">=0.19.2,<0.20"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+  - name: ecoscope-workflows-ext-ecoscope
+    version: ">=0.19.2,<0.20"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+  - name: ecoscope-workflows-ext-custom
+    version: ">=0.19.2,<0.20"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+workflow:
+  - name: Time Range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%Y-%m-%d"
+
+  - name: Data Source
+    id: er_client_name
+    task: set_er_connection
+
+  - name: Get Event Data
+    id: get_event_data
+    task: get_events
+    partial:
+      client: ${{ workflow.er_client_name.return }}
+      time_range: ${{ workflow.time_range.return }}
+      raise_on_empty: false
+      include_details: true
+      include_updates: false
+      include_related_events: false
+      include_null_geometry: true
+
+# todo: preprocess: rename time with event_time
+  - name: Filter Event Relocations
+    id: filter_events
+    task: apply_reloc_coord_filter
+    partial:
+      df: ${{ workflow.get_event_data.return }}
+      roi_gdf: null
+      roi_name: null
+      
+  - name: Normalize Event Details
+    id: normalize_event_details
+    task: normalize_column
+    partial:
+      df: ${{ workflow.filter_events.return }}
+      column: "event_details"
+
+  - name: Remove Column Prefix Event Details
+    id: drop_event_details_prefix
+    task: drop_column_prefix
+    partial:
+      df: ${{ workflow.normalize_event_details.return }}
+      prefix: "event_details__"
+
+  - name: Process Columns by Ecoscope # This task processes columns using Ecoscope's standard procedures
+    id: preprocess_columns
+    task: map_columns
+    partial:
+      df: ${{ workflow.drop_event_details_prefix.return }}
+      rename_columns:
+        time: event_time
+      
+
+  - name: Process Columns # This task is for customer's too
+    id: process_columns
+    task: map_columns
+    partial:
+      df: ${{ workflow.preprocess_columns.return }}
+
+  - name: Persist Events
+    id: persist_events
+    task: persist_df_wrapper
+    partial:
+      df: ${{ workflow.process_columns.return }}
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+
+  - name: Gather Output Files
+    id: output_files
+    task: gather_output_files
+    partial:
+      files: ${{ workflow.persist_events.return }}
