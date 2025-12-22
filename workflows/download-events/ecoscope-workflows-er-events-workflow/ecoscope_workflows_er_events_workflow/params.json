@@ -1,0 +1,386 @@
+{
+  "properties": {
+    "time_range": {
+      "additionalProperties": false,
+      "properties": {
+        "since": {
+          "format": "date-time",
+          "title": "Since",
+          "type": "string",
+          "description": "The start time"
+        },
+        "until": {
+          "format": "date-time",
+          "title": "Until",
+          "type": "string",
+          "description": "The end time"
+        },
+        "timezone": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimezoneInfo"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        }
+      },
+      "required": [
+        "since",
+        "until"
+      ],
+      "type": "object",
+      "description": "Choose the period of time to analyze.",
+      "title": "Time Range"
+    },
+    "er_client_name": {
+      "additionalProperties": false,
+      "properties": {
+        "data_source": {
+          "$ref": "#/$defs/EarthRangerConnection",
+          "title": "",
+          "description": "Select one of your configured data sources."
+        }
+      },
+      "required": [
+        "data_source"
+      ],
+      "type": "object",
+      "title": "Data Source"
+    },
+    "get_event_data": {
+      "additionalProperties": false,
+      "properties": {
+        "event_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Types",
+          "type": "array",
+          "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
+        },
+        "event_columns": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Columns",
+          "type": "array",
+          "description": "The interested event columns"
+        },
+        "include_display_values": {
+          "default": true,
+          "title": "Include Display Values",
+          "type": "boolean",
+          "description": "Whether or not to include display values for event types",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [
+        "event_types",
+        "event_columns"
+      ],
+      "type": "object",
+      "title": "Get Event Data"
+    },
+    "filter_events": {
+      "additionalProperties": false,
+      "properties": {
+        "bounding_box": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
+            }
+          ],
+          "default": {
+            "min_y": -90.0,
+            "max_y": 90.0,
+            "min_x": -180.0,
+            "max_x": 180.0
+          },
+          "title": "Bounding Box",
+          "description": "Filter events to inside these bounding coordinates.",
+          "ecoscope:advanced": true
+        },
+        "filter_point_coords": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Coordinate"
+          },
+          "title": "Filter Exact Point Coordinates",
+          "type": "array",
+          "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Filter Event Relocations"
+    },
+    "normalize_event_details": {
+      "additionalProperties": false,
+      "properties": {
+        "skip_if_not_exists": {
+          "default": true,
+          "title": "Skip If Not Exists",
+          "type": "boolean",
+          "description": "Skip if the column does not exist.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Normalize Event Details"
+    },
+    "preprocess_columns": {
+      "additionalProperties": false,
+      "properties": {
+        "drop_columns": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Drop Columns",
+          "type": "array",
+          "description": "List of columns to drop.",
+          "ecoscope:advanced": true
+        },
+        "retain_columns": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Retain Columns",
+          "type": "array",
+          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Process Columns by Ecoscope"
+    },
+    "process_columns": {
+      "additionalProperties": false,
+      "properties": {
+        "drop_columns": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Drop Columns",
+          "type": "array",
+          "description": "List of columns to drop.",
+          "ecoscope:advanced": true
+        },
+        "retain_columns": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Retain Columns",
+          "type": "array",
+          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
+          "ecoscope:advanced": true
+        },
+        "rename_columns": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "title": "Rename Columns",
+          "type": "object",
+          "description": "Dictionary of columns to rename.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Process Columns"
+    },
+    "persist_events": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "default": null,
+          "title": "Filename",
+          "type": "string",
+          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+          "ecoscope:advanced": true
+        },
+        "filetypes": {
+          "default": [
+            "csv"
+          ],
+          "items": {
+            "enum": [
+              "csv",
+              "gpkg",
+              "geoparquet"
+            ],
+            "type": "string"
+          },
+          "title": "Filetypes",
+          "type": "array",
+          "description": "The output format",
+          "ecoscope:advanced": true
+        },
+        "sanitize": {
+          "default": false,
+          "title": "Sanitize",
+          "type": "boolean",
+          "description": "Whether to sanitize the dataframe for Arrow compatibility before persisting",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Persist Events"
+    }
+  },
+  "$defs": {
+    "TimezoneInfo": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "tzCode": {
+          "title": "Tzcode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "utc": {
+          "title": "Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tzCode",
+        "name",
+        "utc"
+      ],
+      "title": "TimezoneInfo",
+      "type": "object"
+    },
+    "EarthRangerConnection": {
+      "properties": {
+        "name": {
+          "title": "Data Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "EarthRangerConnection",
+      "type": "object"
+    },
+    "BoundingBox": {
+      "properties": {
+        "min_y": {
+          "default": -90.0,
+          "ecoscope:advanced": true,
+          "title": "Min Latitude",
+          "type": "number"
+        },
+        "max_y": {
+          "default": 90.0,
+          "ecoscope:advanced": true,
+          "title": "Max Latitude",
+          "type": "number"
+        },
+        "min_x": {
+          "default": -180.0,
+          "ecoscope:advanced": true,
+          "title": "Min Longitude",
+          "type": "number"
+        },
+        "max_x": {
+          "default": 180.0,
+          "ecoscope:advanced": true,
+          "title": "Max Longitude",
+          "type": "number"
+        }
+      },
+      "title": "BoundingBox",
+      "type": "object"
+    },
+    "Coordinate": {
+      "properties": {
+        "y": {
+          "description": "Example -0.15293",
+          "title": "Latitude",
+          "type": "number"
+        },
+        "x": {
+          "description": "Example 37.30906",
+          "title": "Longitude",
+          "type": "number"
+        }
+      },
+      "required": [
+        "y",
+        "x"
+      ],
+      "title": "Coordinate",
+      "type": "object"
+    }
+  },
+  "uiSchema": {
+    "time_range": {
+      "ui:order": [
+        "since",
+        "until",
+        "timezone"
+      ]
+    },
+    "get_event_data": {
+      "ui:order": [
+        "event_types",
+        "event_columns",
+        "include_display_values"
+      ]
+    },
+    "filter_events": {
+      "ui:order": [
+        "bounding_box",
+        "filter_point_coords"
+      ]
+    },
+    "preprocess_columns": {
+      "ui:order": [
+        "drop_columns",
+        "retain_columns"
+      ]
+    },
+    "process_columns": {
+      "ui:order": [
+        "drop_columns",
+        "retain_columns",
+        "rename_columns"
+      ]
+    },
+    "persist_events": {
+      "ui:order": [
+        "filename",
+        "filetypes",
+        "sanitize"
+      ]
+    },
+    "ui:order": [
+      "time_range",
+      "er_client_name",
+      "get_event_data",
+      "filter_events",
+      "normalize_event_details",
+      "preprocess_columns",
+      "process_columns",
+      "persist_events"
+    ]
+  },
+  "additionalProperties": false
+}
