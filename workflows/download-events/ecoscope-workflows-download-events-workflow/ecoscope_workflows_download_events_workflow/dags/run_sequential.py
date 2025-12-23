@@ -37,6 +37,9 @@ from ecoscope_workflows_core.tasks.transformation import (
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_ext_custom.tasks.io import (
+    download_event_attachments as download_event_attachments,
+)
+from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
@@ -158,6 +161,28 @@ def main(params: Params):
             include_null_geometry=True,
             include_display_values=True,
             **(params_dict.get("get_event_data") or {}),
+        )
+        .call()
+    )
+
+    download_attachments = (
+        download_event_attachments.validate()
+        .set_task_instance_id("download_attachments")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            client=er_client_name,
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            use_index_as_id=False,
+            event_gdf=get_event_data,
+            **(params_dict.get("download_attachments") or {}),
         )
         .call()
     )

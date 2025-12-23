@@ -85,16 +85,7 @@
           },
           "title": "Event Columns",
           "type": "array",
-          "description": "The interested event columns",
-          "default": [
-            "id",
-            "time",
-            "event_type",
-            "event_category",
-            "reported_by",
-            "serial_number",
-            "geometry"
-          ]
+          "description": "The interested event columns"
         }
       },
       "required": [
@@ -103,6 +94,26 @@
       ],
       "type": "object",
       "title": "Get Event Data"
+    },
+    "download_attachments": {
+      "additionalProperties": false,
+      "properties": {
+        "attachments_subdir": {
+          "default": "attachments",
+          "title": "Attachments Subdir",
+          "type": "string",
+          "description": "Subdirectory inside output_dir to store attachments."
+        },
+        "skip_download": {
+          "default": false,
+          "title": "Skip Download",
+          "type": "boolean",
+          "description": "If True, skip downloading and return empty list."
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Download Attachments"
     },
     "filter_events": {
       "additionalProperties": false,
@@ -624,25 +635,13 @@
       "ui:order": [
         "event_types",
         "event_columns"
-      ],
-      "event_columns": {
-        "ui:widget": "array",
-        "ui:options": {
-          "orderable": false,
-          "addable": true,
-          "removable": true
-        },
-        "items": {
-          "ui:emptyValue": ""
-        }
-      },
-      "event_types": {
-        "ui:widget": "array",
-        "ui:options": {
-          "addable": true,
-          "removable": true
-        }
-      }
+      ]
+    },
+    "download_attachments": {
+      "ui:order": [
+        "attachments_subdir",
+        "skip_download"
+      ]
     },
     "filter_events": {
       "ui:order": [
@@ -669,6 +668,7 @@
       "time_range",
       "er_client_name",
       "get_event_data",
+      "download_attachments",
       "filter_events",
       "customize_columns",
       "sql_query",

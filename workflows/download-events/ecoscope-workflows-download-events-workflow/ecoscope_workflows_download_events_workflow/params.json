@@ -95,6 +95,26 @@
       "type": "object",
       "title": "Get Event Data"
     },
+    "download_attachments": {
+      "additionalProperties": false,
+      "properties": {
+        "attachments_subdir": {
+          "default": "attachments",
+          "title": "Attachments Subdir",
+          "type": "string",
+          "description": "Subdirectory inside output_dir to store attachments."
+        },
+        "skip_download": {
+          "default": false,
+          "title": "Skip Download",
+          "type": "boolean",
+          "description": "If True, skip downloading and return empty list."
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Download Attachments"
+    },
     "filter_events": {
       "additionalProperties": false,
       "properties": {
@@ -603,6 +623,12 @@
         "event_columns"
       ]
     },
+    "download_attachments": {
+      "ui:order": [
+        "attachments_subdir",
+        "skip_download"
+      ]
+    },
     "filter_events": {
       "ui:order": [
         "bounding_box",
@@ -628,6 +654,7 @@
       "time_range",
       "er_client_name",
       "get_event_data",
+      "download_attachments",
       "filter_events",
       "customize_columns",
       "sql_query",

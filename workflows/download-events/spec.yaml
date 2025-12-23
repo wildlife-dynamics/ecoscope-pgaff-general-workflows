@@ -54,6 +54,15 @@ workflow:
       include_null_geometry: true
       include_display_values: true
 
+  - name: Download Attachments
+    id: download_attachments
+    task: download_event_attachments
+    partial:
+      client: ${{ workflow.er_client_name.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      use_index_as_id: false
+      event_gdf: ${{ workflow.get_event_data.return }}
+
   - name: Preprocess Columns
     id: process_columns
     task: map_columns
@@ -118,12 +127,10 @@ workflow:
     partial:
       df: ${{ workflow.customize_columns.return }}
 
-
   ## Standard Processing Steps ##
   - name: Group Data
     id: groupers
     task: set_groupers
-
 
   - name: Add temporal index to Events
     id: events_add_temporal_index

@@ -32,6 +32,22 @@ class GetEventData(BaseModel):
     )
 
 
+class DownloadAttachments(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    attachments_subdir: Optional[str] = Field(
+        "attachments",
+        description="Subdirectory inside output_dir to store attachments.",
+        title="Attachments Subdir",
+    )
+    skip_download: Optional[bool] = Field(
+        False,
+        description="If True, skip downloading and return empty list.",
+        title="Skip Download",
+    )
+
+
 class CustomizeColumns(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -343,6 +359,9 @@ class FormData(BaseModel):
     )
     er_client_name: Optional[ErClientName] = Field(None, title="Data Source")
     get_event_data: Optional[GetEventData] = Field(None, title="Get Event Data")
+    download_attachments: Optional[DownloadAttachments] = Field(
+        None, title="Download Attachments"
+    )
     filter_events: Optional[FilterEvents] = Field(
         None, title="Filter Event Relocations"
     )

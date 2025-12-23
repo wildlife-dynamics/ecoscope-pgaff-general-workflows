@@ -38,6 +38,9 @@ from ecoscope_workflows_core.tasks.transformation import (
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_ext_custom.tasks.io import (
+    download_event_attachments as download_event_attachments,
+)
+from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
@@ -77,6 +80,7 @@ def main(params: Params):
         "get_timezone": ["time_range"],
         "er_client_name": [],
         "get_event_data": ["er_client_name", "time_range"],
+        "download_attachments": ["er_client_name", "get_event_data"],
         "process_columns": ["get_event_data"],
         "convert_to_user_timezone": ["process_columns", "get_timezone"],
         "extract_reported_by": ["convert_to_user_timezone"],
@@ -208,6 +212,28 @@ def main(params: Params):
                 "include_display_values": True,
             }
             | (params_dict.get("get_event_data") or {}),
+            method="call",
+        ),
+        "download_attachments": Node(
+            async_task=download_event_attachments.validate()
+            .set_task_instance_id("download_attachments")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "client": DependsOn("er_client_name"),
+                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "use_index_as_id": False,
+                "event_gdf": DependsOn("get_event_data"),
+            }
+            | (params_dict.get("download_attachments") or {}),
             method="call",
         ),
         "process_columns": Node(
