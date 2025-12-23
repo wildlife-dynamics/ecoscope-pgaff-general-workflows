@@ -8,6 +8,11 @@ from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connect
 from ecoscope_workflows_core.tasks.results import (
     gather_output_files as gather_output_files,
 )
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped as any_dependency_skipped,
+)
+from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
+from ecoscope_workflows_core.tasks.skip import never as never
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
@@ -51,6 +56,13 @@ def main(params: Params):
             .set_task_instance_id("time_range")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "time_format": "%Y-%m-%d",
@@ -63,6 +75,13 @@ def main(params: Params):
             .set_task_instance_id("er_client_name")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial=(params_dict.get("er_client_name") or {}),
             method="call",
@@ -72,6 +91,13 @@ def main(params: Params):
             .set_task_instance_id("get_event_data")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "client": DependsOn("er_client_name"),
@@ -90,6 +116,13 @@ def main(params: Params):
             .set_task_instance_id("filter_events")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("get_event_data"),
@@ -104,6 +137,13 @@ def main(params: Params):
             .set_task_instance_id("normalize_event_details")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("filter_events"),
@@ -117,6 +157,13 @@ def main(params: Params):
             .set_task_instance_id("drop_event_details_prefix")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("normalize_event_details"),
@@ -130,6 +177,13 @@ def main(params: Params):
             .set_task_instance_id("process_columns")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("drop_event_details_prefix"),
@@ -142,6 +196,13 @@ def main(params: Params):
             .set_task_instance_id("sql_query")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("process_columns"),
@@ -154,6 +215,12 @@ def main(params: Params):
             .set_task_instance_id("persist_events")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("sql_query"),
@@ -167,6 +234,13 @@ def main(params: Params):
             .set_task_instance_id("output_files")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "files": DependsOn("persist_events"),

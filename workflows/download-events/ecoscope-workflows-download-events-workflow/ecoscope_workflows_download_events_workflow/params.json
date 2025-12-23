@@ -173,14 +173,14 @@
       "additionalProperties": false,
       "properties": {
         "query": {
+          "default": "",
           "title": "Query",
           "type": "string",
-          "description": "SQL query string to apply to the DataFrame. Use 'df' as the table name in the query."
+          "description": "SQL query string to apply to the DataFrame. Use 'df' as the table name in the query.",
+          "ecoscope:advanced": true
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": [],
       "type": "object",
       "title": "Apply SQL Query"
     },

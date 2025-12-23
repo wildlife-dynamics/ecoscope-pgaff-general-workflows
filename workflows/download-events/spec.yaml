@@ -9,6 +9,11 @@ requirements:
   - name: ecoscope-workflows-ext-custom
     version: ">=0.0.9"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
 
 workflow:
   - name: Time Range
@@ -73,6 +78,9 @@ workflow:
     partial:
       df: ${{ workflow.sql_query.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+    skipif:
+      conditions:
+        - never
 
   - name: Gather Output Files
     id: output_files
