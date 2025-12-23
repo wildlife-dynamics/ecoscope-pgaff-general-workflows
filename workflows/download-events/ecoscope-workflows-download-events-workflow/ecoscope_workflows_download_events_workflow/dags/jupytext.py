@@ -12,7 +12,11 @@
 
 import os
 
+from ecoscope_workflows_core.tasks.filter import (
+    get_timezone_from_time_range as get_timezone_from_time_range,
+)
 from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
+from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
 from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
 from ecoscope_workflows_core.tasks.results import (
     gather_output_files as gather_output_files,
@@ -22,6 +26,15 @@ from ecoscope_workflows_core.tasks.skip import (
 )
 from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
 from ecoscope_workflows_core.tasks.skip import never as never
+from ecoscope_workflows_core.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
+)
+from ecoscope_workflows_core.tasks.transformation import (
+    convert_values_to_timezone as convert_values_to_timezone,
+)
+from ecoscope_workflows_core.tasks.transformation import (
+    extract_value_from_json_column as extract_value_from_json_column,
+)
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
@@ -67,7 +80,35 @@ time_range = (
         ],
         unpack_depth=1,
     )
-    .partial(time_format="%Y-%m-%d", **time_range_params)
+    .partial(time_format="%d %b %Y %H:%M:%S", **time_range_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Extract Timezone Selection
+
+# %%
+# parameters
+
+get_timezone_params = dict()
+
+# %%
+# call the task
+
+
+get_timezone = (
+    get_timezone_from_time_range.set_task_instance_id("get_timezone")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(time_range=time_range, **get_timezone_params)
     .call()
 )
 
@@ -144,6 +185,174 @@ get_event_data = (
 
 
 # %% [markdown]
+# ## Group Data
+
+# %%
+# parameters
+
+groupers_params = dict(
+    groupers=...,
+)
+
+# %%
+# call the task
+
+
+groupers = (
+    set_groupers.set_task_instance_id("groupers")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**groupers_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Preprocess Columns
+
+# %%
+# parameters
+
+process_columns_params = dict(
+    drop_columns=...,
+    retain_columns=...,
+)
+
+# %%
+# call the task
+
+
+process_columns = (
+    map_columns.set_task_instance_id("process_columns")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        df=get_event_data,
+        rename_columns={"time": "event_time"},
+        **process_columns_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Convert to timezone
+
+# %%
+# parameters
+
+convert_to_user_timezone_params = dict()
+
+# %%
+# call the task
+
+
+convert_to_user_timezone = (
+    convert_values_to_timezone.set_task_instance_id("convert_to_user_timezone")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        df=get_event_data,
+        timezone=get_timezone,
+        columns=["time"],
+        **convert_to_user_timezone_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Add temporal index to Events
+
+# %%
+# parameters
+
+events_add_temporal_index_params = dict()
+
+# %%
+# call the task
+
+
+events_add_temporal_index = (
+    add_temporal_index.set_task_instance_id("events_add_temporal_index")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        df=convert_to_user_timezone,
+        time_col="time",
+        groupers=groupers,
+        cast_to_datetime=True,
+        format="mixed",
+        **events_add_temporal_index_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Extract reported_by_name from Events
+
+# %%
+# parameters
+
+extract_reported_by_params = dict()
+
+# %%
+# call the task
+
+
+extract_reported_by = (
+    extract_value_from_json_column.set_task_instance_id("extract_reported_by")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        df=events_add_temporal_index,
+        column_name="reported_by",
+        field_name_options=["name"],
+        output_type="str",
+        output_column_name="reported_by_name",
+        **extract_reported_by_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Filter Event Relocations
 
 # %%
@@ -169,7 +378,9 @@ filter_events = (
         ],
         unpack_depth=1,
     )
-    .partial(df=get_event_data, roi_gdf=None, roi_name=None, **filter_events_params)
+    .partial(
+        df=extract_reported_by, roi_gdf=None, roi_name=None, **filter_events_params
+    )
     .call()
 )
 
@@ -242,7 +453,7 @@ drop_event_details_prefix = (
 # %%
 # parameters
 
-process_columns_params = dict(
+customize_columns_params = dict(
     drop_columns=...,
     retain_columns=...,
     rename_columns=...,
@@ -252,8 +463,8 @@ process_columns_params = dict(
 # call the task
 
 
-process_columns = (
-    map_columns.set_task_instance_id("process_columns")
+customize_columns = (
+    map_columns.set_task_instance_id("customize_columns")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -263,7 +474,7 @@ process_columns = (
         ],
         unpack_depth=1,
     )
-    .partial(df=drop_event_details_prefix, **process_columns_params)
+    .partial(df=drop_event_details_prefix, **customize_columns_params)
     .call()
 )
 
@@ -293,7 +504,7 @@ sql_query = (
         ],
         unpack_depth=1,
     )
-    .partial(df=process_columns, **sql_query_params)
+    .partial(df=customize_columns, **sql_query_params)
     .call()
 )
 

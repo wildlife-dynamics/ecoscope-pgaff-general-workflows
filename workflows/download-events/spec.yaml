@@ -20,7 +20,13 @@ workflow:
     id: time_range
     task: set_time_range
     partial:
-      time_format: "%Y-%m-%d"
+      time_format: "%d %b %Y %H:%M:%S"
+
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
 
   - name: Data Source
     id: er_client_name
@@ -37,12 +43,54 @@ workflow:
       include_updates: false
       include_related_events: false
       include_null_geometry: true
-      
+
+
+  ## Standard Processing Steps ##
+  - name: Group Data
+    id: groupers
+    task: set_groupers
+
+  - name: Preprocess Columns
+    id: process_columns
+    task: map_columns
+    partial:
+      df: ${{ workflow.get_event_data.return }}
+      rename_columns:
+        time: event_time
+
+  - name: "Convert to timezone"
+    id: convert_to_user_timezone
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.get_event_data.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns: ["time"]
+
+  - name: Add temporal index to Events
+    id: events_add_temporal_index
+    task: add_temporal_index
+    partial:
+      df: ${{ workflow.convert_to_user_timezone.return }}
+      time_col: "time"
+      groupers: ${{ workflow.groupers.return }}
+      cast_to_datetime: true
+      format: "mixed"
+
+  - name: Extract reported_by_name from Events
+    id: extract_reported_by
+    task: extract_value_from_json_column
+    partial:
+      df: ${{ workflow.events_add_temporal_index.return }}
+      column_name: "reported_by"
+      field_name_options: ["name"]
+      output_type: "str"
+      output_column_name: "reported_by_name"
+
   - name: Filter Event Relocations
     id: filter_events
     task: apply_reloc_coord_filter
     partial:
-      df: ${{ workflow.get_event_data.return }}
+      df: ${{ workflow.extract_reported_by.return }}
       roi_gdf: null
       roi_name: null
       
@@ -60,8 +108,9 @@ workflow:
       df: ${{ workflow.normalize_event_details.return }}
       prefix: "event_details__"
 
-  - name: Process Columns # This task is for customer's to add any custom column processing steps
-    id: process_columns
+  ## Custom Processing Steps ##
+  - name: Process Columns
+    id: customize_columns
     task: map_columns
     partial:
       df: ${{ workflow.drop_event_details_prefix.return }}
@@ -70,7 +119,7 @@ workflow:
     id: sql_query
     task: apply_sql_query
     partial:
-      df: ${{ workflow.process_columns.return }}
+      df: ${{ workflow.customize_columns.return }}
 
   - name: Persist Events
     id: persist_events

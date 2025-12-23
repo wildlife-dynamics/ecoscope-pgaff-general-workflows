@@ -82,6 +82,59 @@
       "type": "object",
       "title": "Get Event Data"
     },
+    "groupers": {
+      "additionalProperties": false,
+      "properties": {
+        "groupers": {
+          "default": null,
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ValueGrouper"
+              },
+              {
+                "$ref": "#/$defs/TemporalGrouper"
+              }
+            ],
+            "title": "Group by"
+          },
+          "title": " ",
+          "type": "array",
+          "description": "            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            "
+        }
+      },
+      "type": "object",
+      "required": [],
+      "title": "Group Data"
+    },
+    "process_columns": {
+      "additionalProperties": false,
+      "properties": {
+        "drop_columns": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Drop Columns",
+          "type": "array",
+          "description": "List of columns to drop.",
+          "ecoscope:advanced": true
+        },
+        "retain_columns": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Retain Columns",
+          "type": "array",
+          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Preprocess Columns"
+    },
     "filter_events": {
       "additionalProperties": false,
       "properties": {
@@ -131,7 +184,7 @@
       "type": "object",
       "title": "Normalize Event Details"
     },
-    "process_columns": {
+    "customize_columns": {
       "additionalProperties": false,
       "properties": {
         "drop_columns": {
@@ -266,6 +319,49 @@
       "title": "EarthRangerConnection",
       "type": "object"
     },
+    "TemporalGrouper": {
+      "oneOf": [
+        {
+          "const": "%Y",
+          "title": "Year (example: 2024)"
+        },
+        {
+          "const": "%B",
+          "title": "Month (example: September)"
+        },
+        {
+          "const": "%Y-%m",
+          "title": "Year and Month (example: 2023-01)"
+        },
+        {
+          "const": "%j",
+          "title": "Day of the year as a number (example: 365)"
+        },
+        {
+          "const": "%d",
+          "title": "Day of the month as a number (example: 31)"
+        },
+        {
+          "const": "%A",
+          "title": "Day of the week (example: Sunday)"
+        },
+        {
+          "const": "%H",
+          "title": "Hour (24-hour clock) as number (example: 22)"
+        },
+        {
+          "const": "%Y-%m-%d",
+          "title": "Date (example: 2025-01-31)"
+        }
+      ],
+      "title": "Time",
+      "type": "string"
+    },
+    "ValueGrouper": {
+      "oneOf": [],
+      "title": "Category",
+      "type": "string"
+    },
     "BoundingBox": {
       "properties": {
         "min_y": {
@@ -332,13 +428,19 @@
         "include_display_values"
       ]
     },
+    "process_columns": {
+      "ui:order": [
+        "drop_columns",
+        "retain_columns"
+      ]
+    },
     "filter_events": {
       "ui:order": [
         "bounding_box",
         "filter_point_coords"
       ]
     },
-    "process_columns": {
+    "customize_columns": {
       "ui:order": [
         "drop_columns",
         "retain_columns",
@@ -356,9 +458,11 @@
       "time_range",
       "er_client_name",
       "get_event_data",
+      "groupers",
+      "process_columns",
       "filter_events",
       "normalize_event_details",
-      "process_columns",
+      "customize_columns",
       "sql_query",
       "persist_events"
     ]

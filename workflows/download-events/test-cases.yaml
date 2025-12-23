@@ -17,9 +17,6 @@ base:
         {"x": 0.0, "y": 0.0},
         {"x": 1.0, "y": 1.0},
       ]
-    process_columns:
-      rename_columns:
-        time: event_time
     persist_events:
       filetypes: ["geoparquet", "csv"]
       sanitize: false
@@ -31,7 +28,7 @@ with-details:
   params:
     time_range:
       since: "2025-12-21T00:00:00Z"
-      until: "2024-12-23T23:59:59Z"
+      until: "2025-12-23T23:59:59Z"
     er_client_name:
       data_source:
         name: "mep_dev"
@@ -44,9 +41,6 @@ with-details:
         {"x": 0.0, "y": 0.0},
         {"x": 1.0, "y": 1.0},
       ]
-    process_columns:
-      rename_columns:
-        time: event_time
     persist_events:
       filetypes: ["geoparquet", "csv"]
       sanitize: true

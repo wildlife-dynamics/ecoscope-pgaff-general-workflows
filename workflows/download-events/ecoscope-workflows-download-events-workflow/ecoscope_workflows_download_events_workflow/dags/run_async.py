@@ -3,7 +3,11 @@ import json
 import os
 
 from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
+from ecoscope_workflows_core.tasks.filter import (
+    get_timezone_from_time_range as get_timezone_from_time_range,
+)
 from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
+from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
 from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
 from ecoscope_workflows_core.tasks.results import (
     gather_output_files as gather_output_files,
@@ -13,6 +17,15 @@ from ecoscope_workflows_core.tasks.skip import (
 )
 from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
 from ecoscope_workflows_core.tasks.skip import never as never
+from ecoscope_workflows_core.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
+)
+from ecoscope_workflows_core.tasks.transformation import (
+    convert_values_to_timezone as convert_values_to_timezone,
+)
+from ecoscope_workflows_core.tasks.transformation import (
+    extract_value_from_json_column as extract_value_from_json_column,
+)
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
@@ -39,13 +52,19 @@ def main(params: Params):
 
     dependencies = {
         "time_range": [],
+        "get_timezone": ["time_range"],
         "er_client_name": [],
         "get_event_data": ["er_client_name", "time_range"],
-        "filter_events": ["get_event_data"],
+        "groupers": [],
+        "process_columns": ["get_event_data"],
+        "convert_to_user_timezone": ["get_event_data", "get_timezone"],
+        "events_add_temporal_index": ["convert_to_user_timezone", "groupers"],
+        "extract_reported_by": ["events_add_temporal_index"],
+        "filter_events": ["extract_reported_by"],
         "normalize_event_details": ["filter_events"],
         "drop_event_details_prefix": ["normalize_event_details"],
-        "process_columns": ["drop_event_details_prefix"],
-        "sql_query": ["process_columns"],
+        "customize_columns": ["drop_event_details_prefix"],
+        "sql_query": ["customize_columns"],
         "persist_events": ["sql_query"],
         "output_files": ["persist_events"],
     }
@@ -65,9 +84,28 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "time_format": "%Y-%m-%d",
+                "time_format": "%d %b %Y %H:%M:%S",
             }
             | (params_dict.get("time_range") or {}),
+            method="call",
+        ),
+        "get_timezone": Node(
+            async_task=get_timezone_from_time_range.validate()
+            .set_task_instance_id("get_timezone")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "time_range": DependsOn("time_range"),
+            }
+            | (params_dict.get("get_timezone") or {}),
             method="call",
         ),
         "er_client_name": Node(
@@ -111,6 +149,109 @@ def main(params: Params):
             | (params_dict.get("get_event_data") or {}),
             method="call",
         ),
+        "groupers": Node(
+            async_task=set_groupers.validate()
+            .set_task_instance_id("groupers")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("groupers") or {}),
+            method="call",
+        ),
+        "process_columns": Node(
+            async_task=map_columns.validate()
+            .set_task_instance_id("process_columns")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("get_event_data"),
+                "rename_columns": {"time": "event_time"},
+            }
+            | (params_dict.get("process_columns") or {}),
+            method="call",
+        ),
+        "convert_to_user_timezone": Node(
+            async_task=convert_values_to_timezone.validate()
+            .set_task_instance_id("convert_to_user_timezone")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("get_event_data"),
+                "timezone": DependsOn("get_timezone"),
+                "columns": ["time"],
+            }
+            | (params_dict.get("convert_to_user_timezone") or {}),
+            method="call",
+        ),
+        "events_add_temporal_index": Node(
+            async_task=add_temporal_index.validate()
+            .set_task_instance_id("events_add_temporal_index")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("convert_to_user_timezone"),
+                "time_col": "time",
+                "groupers": DependsOn("groupers"),
+                "cast_to_datetime": True,
+                "format": "mixed",
+            }
+            | (params_dict.get("events_add_temporal_index") or {}),
+            method="call",
+        ),
+        "extract_reported_by": Node(
+            async_task=extract_value_from_json_column.validate()
+            .set_task_instance_id("extract_reported_by")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("events_add_temporal_index"),
+                "column_name": "reported_by",
+                "field_name_options": ["name"],
+                "output_type": "str",
+                "output_column_name": "reported_by_name",
+            }
+            | (params_dict.get("extract_reported_by") or {}),
+            method="call",
+        ),
         "filter_events": Node(
             async_task=apply_reloc_coord_filter.validate()
             .set_task_instance_id("filter_events")
@@ -125,7 +266,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("get_event_data"),
+                "df": DependsOn("extract_reported_by"),
                 "roi_gdf": None,
                 "roi_name": None,
             }
@@ -172,9 +313,9 @@ def main(params: Params):
             | (params_dict.get("drop_event_details_prefix") or {}),
             method="call",
         ),
-        "process_columns": Node(
+        "customize_columns": Node(
             async_task=map_columns.validate()
-            .set_task_instance_id("process_columns")
+            .set_task_instance_id("customize_columns")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -188,7 +329,7 @@ def main(params: Params):
             partial={
                 "df": DependsOn("drop_event_details_prefix"),
             }
-            | (params_dict.get("process_columns") or {}),
+            | (params_dict.get("customize_columns") or {}),
             method="call",
         ),
         "sql_query": Node(
@@ -205,7 +346,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("process_columns"),
+                "df": DependsOn("customize_columns"),
             }
             | (params_dict.get("sql_query") or {}),
             method="call",

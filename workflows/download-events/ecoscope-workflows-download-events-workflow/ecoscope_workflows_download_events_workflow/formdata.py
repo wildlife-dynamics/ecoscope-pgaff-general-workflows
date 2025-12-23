@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 
 class GetEventData(BaseModel):
@@ -29,6 +29,20 @@ class GetEventData(BaseModel):
     )
 
 
+class ProcessColumns(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    drop_columns: Optional[List[str]] = Field(
+        [], description="List of columns to drop.", title="Drop Columns"
+    )
+    retain_columns: Optional[List[str]] = Field(
+        [],
+        description='List of columns to retain with the order specified by the list.\n                        "Keep all the columns if the list is empty.',
+        title="Retain Columns",
+    )
+
+
 class NormalizeEventDetails(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -40,7 +54,7 @@ class NormalizeEventDetails(BaseModel):
     )
 
 
-class ProcessColumns(BaseModel):
+class CustomizeColumns(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -104,6 +118,14 @@ class EarthRangerConnection(BaseModel):
     name: str = Field(..., title="Data Source")
 
 
+class TemporalGrouper(RootModel[str]):
+    root: str = Field(..., title="Time")
+
+
+class ValueGrouper(RootModel[str]):
+    root: str = Field(..., title="Category")
+
+
 class BoundingBox(BaseModel):
     min_y: Optional[float] = Field(-90.0, title="Min Latitude")
     max_y: Optional[float] = Field(90.0, title="Max Latitude")
@@ -134,6 +156,17 @@ class ErClientName(BaseModel):
     )
 
 
+class Groupers(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    groupers: Optional[List[Union[ValueGrouper, TemporalGrouper]]] = Field(
+        None,
+        description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
+        title=" ",
+    )
+
+
 class FilterEvents(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -161,12 +194,14 @@ class FormData(BaseModel):
     )
     er_client_name: Optional[ErClientName] = Field(None, title="Data Source")
     get_event_data: Optional[GetEventData] = Field(None, title="Get Event Data")
+    groupers: Optional[Groupers] = Field(None, title="Group Data")
+    process_columns: Optional[ProcessColumns] = Field(None, title="Preprocess Columns")
     filter_events: Optional[FilterEvents] = Field(
         None, title="Filter Event Relocations"
     )
     normalize_event_details: Optional[NormalizeEventDetails] = Field(
         None, title="Normalize Event Details"
     )
-    process_columns: Optional[ProcessColumns] = Field(None, title="Process Columns")
+    customize_columns: Optional[CustomizeColumns] = Field(None, title="Process Columns")
     sql_query: Optional[SqlQuery] = Field(None, title="Apply SQL Query")
     persist_events: Optional[PersistEvents] = Field(None, title="Persist Events")
