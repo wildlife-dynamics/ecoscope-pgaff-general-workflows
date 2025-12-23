@@ -9,6 +9,9 @@ requirements:
   - name: ecoscope-workflows-ext-custom
     version: ">=0.0.9"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+rjsf-overrides:
+  properties:
+    persist_events.properties.sanitize.default: true
 task-instance-defaults:
   skipif:
     conditions:
@@ -57,6 +60,8 @@ workflow:
       df: ${{ workflow.get_event_data.return }}
       rename_columns:
         time: event_time
+      drop_columns: []
+      retain_columns: []
 
   - name: "Convert to timezone"
     id: convert_to_user_timezone
@@ -85,21 +90,14 @@ workflow:
       field_name_options: ["name"]
       output_type: "str"
       output_column_name: "reported_by_name"
-
-  - name: Filter Event Relocations
-    id: filter_events
-    task: apply_reloc_coord_filter
-    partial:
-      df: ${{ workflow.extract_reported_by.return }}
-      roi_gdf: null
-      roi_name: null
       
   - name: Normalize Event Details
     id: normalize_event_details
     task: normalize_column
     partial:
-      df: ${{ workflow.filter_events.return }}
+      df: ${{ workflow.extract_reported_by.return }}
       column: "event_details"
+      skip_if_not_exists: true
 
   - name: Remove Column Prefix Event Details
     id: drop_event_details_prefix
@@ -109,11 +107,19 @@ workflow:
       prefix: "event_details__"
 
   ## Custom Processing Steps ##
+  - name: Filter Event Relocations
+    id: filter_events
+    task: apply_reloc_coord_filter
+    partial:
+      df: ${{ workflow.drop_event_details_prefix.return }}
+      roi_gdf: null
+      roi_name: null
+
   - name: Process Columns
     id: customize_columns
     task: map_columns
     partial:
-      df: ${{ workflow.drop_event_details_prefix.return }}
+      df: ${{ workflow.filter_events.return }}
 
   - name: Apply SQL Query
     id: sql_query

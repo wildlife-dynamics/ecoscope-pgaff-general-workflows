@@ -220,10 +220,7 @@ groupers = (
 # %%
 # parameters
 
-process_columns_params = dict(
-    drop_columns=...,
-    retain_columns=...,
-)
+process_columns_params = dict()
 
 # %%
 # call the task
@@ -243,6 +240,8 @@ process_columns = (
     .partial(
         df=get_event_data,
         rename_columns={"time": "event_time"},
+        drop_columns=[],
+        retain_columns=[],
         **process_columns_params,
     )
     .call()
@@ -353,47 +352,12 @@ extract_reported_by = (
 
 
 # %% [markdown]
-# ## Filter Event Relocations
-
-# %%
-# parameters
-
-filter_events_params = dict(
-    bounding_box=...,
-    filter_point_coords=...,
-)
-
-# %%
-# call the task
-
-
-filter_events = (
-    apply_reloc_coord_filter.set_task_instance_id("filter_events")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        df=extract_reported_by, roi_gdf=None, roi_name=None, **filter_events_params
-    )
-    .call()
-)
-
-
-# %% [markdown]
 # ## Normalize Event Details
 
 # %%
 # parameters
 
-normalize_event_details_params = dict(
-    skip_if_not_exists=...,
-)
+normalize_event_details_params = dict()
 
 # %%
 # call the task
@@ -410,7 +374,12 @@ normalize_event_details = (
         ],
         unpack_depth=1,
     )
-    .partial(df=filter_events, column="event_details", **normalize_event_details_params)
+    .partial(
+        df=extract_reported_by,
+        column="event_details",
+        skip_if_not_exists=True,
+        **normalize_event_details_params,
+    )
     .call()
 )
 
@@ -448,6 +417,42 @@ drop_event_details_prefix = (
 
 
 # %% [markdown]
+# ## Filter Event Relocations
+
+# %%
+# parameters
+
+filter_events_params = dict(
+    bounding_box=...,
+    filter_point_coords=...,
+)
+
+# %%
+# call the task
+
+
+filter_events = (
+    apply_reloc_coord_filter.set_task_instance_id("filter_events")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        df=drop_event_details_prefix,
+        roi_gdf=None,
+        roi_name=None,
+        **filter_events_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Process Columns
 
 # %%
@@ -474,7 +479,7 @@ customize_columns = (
         ],
         unpack_depth=1,
     )
-    .partial(df=drop_event_details_prefix, **customize_columns_params)
+    .partial(df=filter_events, **customize_columns_params)
     .call()
 )
 

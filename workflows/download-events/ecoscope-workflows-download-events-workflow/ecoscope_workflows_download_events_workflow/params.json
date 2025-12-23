@@ -107,34 +107,6 @@
       "required": [],
       "title": "Group Data"
     },
-    "process_columns": {
-      "additionalProperties": false,
-      "properties": {
-        "drop_columns": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "title": "Drop Columns",
-          "type": "array",
-          "description": "List of columns to drop.",
-          "ecoscope:advanced": true
-        },
-        "retain_columns": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "title": "Retain Columns",
-          "type": "array",
-          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Preprocess Columns"
-    },
     "filter_events": {
       "additionalProperties": false,
       "properties": {
@@ -168,21 +140,6 @@
       "required": [],
       "type": "object",
       "title": "Filter Event Relocations"
-    },
-    "normalize_event_details": {
-      "additionalProperties": false,
-      "properties": {
-        "skip_if_not_exists": {
-          "default": true,
-          "title": "Skip If Not Exists",
-          "type": "boolean",
-          "description": "Skip if the column does not exist.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Normalize Event Details"
     },
     "customize_columns": {
       "additionalProperties": false,
@@ -268,7 +225,7 @@
           "default": false,
           "title": "Sanitize",
           "type": "boolean",
-          "description": "Whether to sanitize the dataframe for Arrow compatibility before persisting",
+          "description": "Whether to sanitize the dataframe for Arrow compatibility before persisting, recommended when including event or observation details",
           "ecoscope:advanced": true
         }
       },
@@ -428,12 +385,6 @@
         "include_display_values"
       ]
     },
-    "process_columns": {
-      "ui:order": [
-        "drop_columns",
-        "retain_columns"
-      ]
-    },
     "filter_events": {
       "ui:order": [
         "bounding_box",
@@ -459,9 +410,7 @@
       "er_client_name",
       "get_event_data",
       "groupers",
-      "process_columns",
       "filter_events",
-      "normalize_event_details",
       "customize_columns",
       "sql_query",
       "persist_events"

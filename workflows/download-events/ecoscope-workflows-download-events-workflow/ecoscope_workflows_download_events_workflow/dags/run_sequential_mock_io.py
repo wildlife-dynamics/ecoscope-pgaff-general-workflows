@@ -175,6 +175,8 @@ def main(params: Params):
         .partial(
             df=get_event_data,
             rename_columns={"time": "event_time"},
+            drop_columns=[],
+            retain_columns=[],
             **(params_dict.get("process_columns") or {}),
         )
         .call()
@@ -247,27 +249,6 @@ def main(params: Params):
         .call()
     )
 
-    filter_events = (
-        apply_reloc_coord_filter.validate()
-        .set_task_instance_id("filter_events")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            df=extract_reported_by,
-            roi_gdf=None,
-            roi_name=None,
-            **(params_dict.get("filter_events") or {}),
-        )
-        .call()
-    )
-
     normalize_event_details = (
         normalize_column.validate()
         .set_task_instance_id("normalize_event_details")
@@ -281,8 +262,9 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            df=filter_events,
+            df=extract_reported_by,
             column="event_details",
+            skip_if_not_exists=True,
             **(params_dict.get("normalize_event_details") or {}),
         )
         .call()
@@ -308,6 +290,27 @@ def main(params: Params):
         .call()
     )
 
+    filter_events = (
+        apply_reloc_coord_filter.validate()
+        .set_task_instance_id("filter_events")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=drop_event_details_prefix,
+            roi_gdf=None,
+            roi_name=None,
+            **(params_dict.get("filter_events") or {}),
+        )
+        .call()
+    )
+
     customize_columns = (
         map_columns.validate()
         .set_task_instance_id("customize_columns")
@@ -320,9 +323,7 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(
-            df=drop_event_details_prefix, **(params_dict.get("customize_columns") or {})
-        )
+        .partial(df=filter_events, **(params_dict.get("customize_columns") or {}))
         .call()
     )
 

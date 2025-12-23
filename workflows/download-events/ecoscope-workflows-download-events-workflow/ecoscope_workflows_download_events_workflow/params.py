@@ -29,31 +29,6 @@ class GetEventData(BaseModel):
     )
 
 
-class ProcessColumns(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    drop_columns: Optional[List[str]] = Field(
-        [], description="List of columns to drop.", title="Drop Columns"
-    )
-    retain_columns: Optional[List[str]] = Field(
-        [],
-        description='List of columns to retain with the order specified by the list.\n                        "Keep all the columns if the list is empty.',
-        title="Retain Columns",
-    )
-
-
-class NormalizeEventDetails(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    skip_if_not_exists: Optional[bool] = Field(
-        True,
-        description="Skip if the column does not exist.",
-        title="Skip If Not Exists",
-    )
-
-
 class CustomizeColumns(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -102,7 +77,7 @@ class PersistEvents(BaseModel):
     )
     sanitize: Optional[bool] = Field(
         False,
-        description="Whether to sanitize the dataframe for Arrow compatibility before persisting",
+        description="Whether to sanitize the dataframe for Arrow compatibility before persisting, recommended when including event or observation details",
         title="Sanitize",
     )
 
@@ -195,12 +170,8 @@ class Params(BaseModel):
     er_client_name: Optional[ErClientName] = Field(None, title="Data Source")
     get_event_data: Optional[GetEventData] = Field(None, title="Get Event Data")
     groupers: Optional[Groupers] = Field(None, title="Group Data")
-    process_columns: Optional[ProcessColumns] = Field(None, title="Preprocess Columns")
     filter_events: Optional[FilterEvents] = Field(
         None, title="Filter Event Relocations"
-    )
-    normalize_event_details: Optional[NormalizeEventDetails] = Field(
-        None, title="Normalize Event Details"
     )
     customize_columns: Optional[CustomizeColumns] = Field(None, title="Process Columns")
     sql_query: Optional[SqlQuery] = Field(None, title="Apply SQL Query")

@@ -20,7 +20,6 @@ base:
     persist_events:
       filetypes: ["geoparquet", "csv"]
       sanitize: false
-      filename: "events"
 
 with-details:
   name: With Event Details

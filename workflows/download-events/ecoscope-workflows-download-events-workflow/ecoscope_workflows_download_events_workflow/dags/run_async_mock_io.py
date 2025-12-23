@@ -80,10 +80,10 @@ def main(params: Params):
         "convert_to_user_timezone": ["get_event_data", "get_timezone"],
         "events_add_temporal_index": ["convert_to_user_timezone", "groupers"],
         "extract_reported_by": ["events_add_temporal_index"],
-        "filter_events": ["extract_reported_by"],
-        "normalize_event_details": ["filter_events"],
+        "normalize_event_details": ["extract_reported_by"],
         "drop_event_details_prefix": ["normalize_event_details"],
-        "customize_columns": ["drop_event_details_prefix"],
+        "filter_events": ["drop_event_details_prefix"],
+        "customize_columns": ["filter_events"],
         "sql_query": ["customize_columns"],
         "persist_events": ["sql_query"],
         "output_files": ["persist_events"],
@@ -201,6 +201,8 @@ def main(params: Params):
             partial={
                 "df": DependsOn("get_event_data"),
                 "rename_columns": {"time": "event_time"},
+                "drop_columns": [],
+                "retain_columns": [],
             }
             | (params_dict.get("process_columns") or {}),
             method="call",
@@ -272,27 +274,6 @@ def main(params: Params):
             | (params_dict.get("extract_reported_by") or {}),
             method="call",
         ),
-        "filter_events": Node(
-            async_task=apply_reloc_coord_filter.validate()
-            .set_task_instance_id("filter_events")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "df": DependsOn("extract_reported_by"),
-                "roi_gdf": None,
-                "roi_name": None,
-            }
-            | (params_dict.get("filter_events") or {}),
-            method="call",
-        ),
         "normalize_event_details": Node(
             async_task=normalize_column.validate()
             .set_task_instance_id("normalize_event_details")
@@ -307,8 +288,9 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("filter_events"),
+                "df": DependsOn("extract_reported_by"),
                 "column": "event_details",
+                "skip_if_not_exists": True,
             }
             | (params_dict.get("normalize_event_details") or {}),
             method="call",
@@ -333,6 +315,27 @@ def main(params: Params):
             | (params_dict.get("drop_event_details_prefix") or {}),
             method="call",
         ),
+        "filter_events": Node(
+            async_task=apply_reloc_coord_filter.validate()
+            .set_task_instance_id("filter_events")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("drop_event_details_prefix"),
+                "roi_gdf": None,
+                "roi_name": None,
+            }
+            | (params_dict.get("filter_events") or {}),
+            method="call",
+        ),
         "customize_columns": Node(
             async_task=map_columns.validate()
             .set_task_instance_id("customize_columns")
@@ -347,7 +350,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("drop_event_details_prefix"),
+                "df": DependsOn("filter_events"),
             }
             | (params_dict.get("customize_columns") or {}),
             method="call",
