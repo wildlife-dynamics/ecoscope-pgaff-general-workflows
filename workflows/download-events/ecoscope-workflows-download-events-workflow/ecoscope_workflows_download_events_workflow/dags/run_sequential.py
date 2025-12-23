@@ -7,6 +7,11 @@ from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connect
 from ecoscope_workflows_core.tasks.results import (
     gather_output_files as gather_output_files,
 )
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped as any_dependency_skipped,
+)
+from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
+from ecoscope_workflows_core.tasks.skip import never as never
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
@@ -36,6 +41,13 @@ def main(params: Params):
         .set_task_instance_id("time_range")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(time_format="%Y-%m-%d", **(params_dict.get("time_range") or {}))
         .call()
     )
@@ -45,6 +57,13 @@ def main(params: Params):
         .set_task_instance_id("er_client_name")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(**(params_dict.get("er_client_name") or {}))
         .call()
     )
@@ -54,6 +73,13 @@ def main(params: Params):
         .set_task_instance_id("get_event_data")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(
             client=er_client_name,
             time_range=time_range,
@@ -72,6 +98,13 @@ def main(params: Params):
         .set_task_instance_id("filter_events")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(
             df=get_event_data,
             roi_gdf=None,
@@ -86,6 +119,13 @@ def main(params: Params):
         .set_task_instance_id("normalize_event_details")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(
             df=filter_events,
             column="event_details",
@@ -99,6 +139,13 @@ def main(params: Params):
         .set_task_instance_id("drop_event_details_prefix")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(
             df=normalize_event_details,
             prefix="event_details__",
@@ -112,6 +159,13 @@ def main(params: Params):
         .set_task_instance_id("process_columns")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(
             df=drop_event_details_prefix, **(params_dict.get("process_columns") or {})
         )
@@ -123,6 +177,13 @@ def main(params: Params):
         .set_task_instance_id("sql_query")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(df=process_columns, **(params_dict.get("sql_query") or {}))
         .call()
     )
@@ -132,6 +193,12 @@ def main(params: Params):
         .set_task_instance_id("persist_events")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
         .partial(
             df=sql_query,
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -145,6 +212,13 @@ def main(params: Params):
         .set_task_instance_id("output_files")
         .handle_errors()
         .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
         .partial(files=persist_events, **(params_dict.get("output_files") or {}))
         .call()
     )

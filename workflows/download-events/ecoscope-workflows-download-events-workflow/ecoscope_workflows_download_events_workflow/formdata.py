@@ -61,8 +61,8 @@ class SqlQuery(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    query: str = Field(
-        ...,
+    query: Optional[str] = Field(
+        "",
         description="SQL query string to apply to the DataFrame. Use 'df' as the table name in the query.",
         title="Query",
     )
