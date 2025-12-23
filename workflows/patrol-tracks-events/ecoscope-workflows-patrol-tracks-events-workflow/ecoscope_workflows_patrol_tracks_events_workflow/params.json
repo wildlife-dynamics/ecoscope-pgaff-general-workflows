@@ -49,6 +49,15 @@
           "title": "Until",
           "type": "string",
           "description": "The end time"
+        },
+        "timezone": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimezoneInfo"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
         }
       },
       "required": [
@@ -81,9 +90,9 @@
       "additionalProperties": false,
       "properties": {
         "status": {
-          "default": null,
-          "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
-          "ecoscope:advanced": true,
+          "default": [
+            "done"
+          ],
           "items": {
             "enum": [
               "active",
@@ -93,12 +102,30 @@
             ],
             "type": "string"
           },
-          "title": "Status",
-          "type": "array"
+          "title": "Patrol Status",
+          "type": "array",
+          "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
+          "uniqueItems": true,
+          "ecoscope:advanced": true
         }
       },
       "type": "object",
       "required": [],
+      "title": ""
+    },
+    "patrol_obs": {
+      "additionalProperties": false,
+      "properties": {
+        "sub_page_size": {
+          "default": null,
+          "title": "Sub Page Size",
+          "type": "integer",
+          "description": "        Manually set the page size for underlying ER API requests.\n        If left as None, this will use the underlying client default value (4000)\n        ",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
       "title": ""
     },
     "fetch_patrol_events": {
@@ -110,12 +137,26 @@
           },
           "title": "Event Types",
           "type": "array",
-          "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types. Only V1 Event Types can be analyzed at this time."
+          "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
         },
         "include_null_geometry": {
           "default": true,
           "title": "Include Events Without a Geometry (point or polygon)",
           "type": "boolean"
+        },
+        "sub_page_size": {
+          "default": null,
+          "title": "Sub Page Size",
+          "type": "integer",
+          "description": "        Manually set the page size for underlying ER API requests.\n        If left as None, this will use the underlying client default value (4000)\n        ",
+          "ecoscope:advanced": true
+        },
+        "include_display_values": {
+          "default": true,
+          "title": "Include Display Values",
+          "type": "boolean",
+          "description": "Whether or not to include display values for event types",
+          "ecoscope:advanced": true
         }
       },
       "required": [
@@ -512,6 +553,34 @@
       "title": "EarthRangerConnection",
       "type": "object"
     },
+    "TimezoneInfo": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "tzCode": {
+          "title": "Tzcode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "utc": {
+          "title": "Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tzCode",
+        "name",
+        "utc"
+      ],
+      "title": "TimezoneInfo",
+      "type": "object"
+    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -682,6 +751,29 @@
           },
           "title": "Colors",
           "type": "array"
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "enum": [
+                "ascending",
+                "descending"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "ecoscope:advanced": true,
+          "title": "Sort"
+        },
+        "label_suffix": {
+          "default": null,
+          "ecoscope:advanced": true,
+          "title": "Label Suffix",
+          "type": "string"
         }
       },
       "title": "LegendDefinition",
@@ -707,6 +799,12 @@
           "ecoscope:advanced": true,
           "title": "Title",
           "type": "string"
+        },
+        "format_title": {
+          "default": false,
+          "ecoscope:advanced": true,
+          "title": "Format Title",
+          "type": "boolean"
         }
       },
       "title": "LegendStyle",
@@ -750,13 +848,16 @@
     "time_range": {
       "ui:order": [
         "since",
-        "until"
+        "until",
+        "timezone"
       ]
     },
     "fetch_patrol_events": {
       "ui:order": [
         "event_types",
-        "include_null_geometry"
+        "include_null_geometry",
+        "sub_page_size",
+        "include_display_values"
       ]
     },
     "filter_fetched_patrol_events": {
@@ -784,6 +885,7 @@
       "time_range",
       "er_patrol_types",
       "er_patrol_status",
+      "patrol_obs",
       "fetch_patrol_events",
       "groupers",
       "patrol_traj",

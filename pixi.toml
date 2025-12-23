@@ -17,8 +17,8 @@ yq = "*"
 hatch = "*"
 
 [feature.compile.dependencies]
-ecoscope-workflows-core = "0.7.2.*"
-ecoscope-workflows-ext-ecoscope = "0.7.2.*"
+ecoscope-workflows-core = ">=0.19.0,<0.20"
+ecoscope-workflows-ext-ecoscope = ">=0.19.0,<0.20"
 # Here we don't specify the channel on purpose, as we want to use the local channel if it exists,
 # otherwise we fall back to the remote channel.
 # If you want to ensure a specific channel to incorporate your local changes, you can uncomment the line below.

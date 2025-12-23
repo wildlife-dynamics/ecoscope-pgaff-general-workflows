@@ -11,40 +11,71 @@
 # ## Imports
 
 import os
-from ecoscope_workflows_core.tasks.config import set_workflow_details
-from ecoscope_workflows_core.tasks.skip import any_is_empty_df
-from ecoscope_workflows_core.tasks.skip import any_dependency_skipped
-from ecoscope_workflows_core.tasks.io import set_er_connection
-from ecoscope_workflows_core.tasks.filter import set_time_range
-from ecoscope_workflows_ext_ecoscope.tasks.io import set_patrol_types
-from ecoscope_workflows_ext_ecoscope.tasks.io import set_patrol_status
-from ecoscope_workflows_ext_ecoscope.tasks.io import get_patrol_observations
-from ecoscope_workflows_ext_ecoscope.tasks.io import get_patrol_events
-from ecoscope_workflows_core.tasks.groupby import set_groupers
-from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import process_relocations
-from ecoscope_workflows_core.tasks.config import set_string_var
+
+from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
+from ecoscope_workflows_core.tasks.config import (
+    set_workflow_details as set_workflow_details,
+)
+from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
+from ecoscope_workflows_core.tasks.groupby import groupbykey as groupbykey
+from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
+from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
+from ecoscope_workflows_core.tasks.io import persist_text as persist_text
+from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
+from ecoscope_workflows_core.tasks.results import (
+    create_map_widget_single_view as create_map_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope_workflows_core.tasks.results import (
+    merge_widget_views as merge_widget_views,
+)
+from ecoscope_workflows_core.tasks.skip import (
+    all_keyed_iterables_are_skips as all_keyed_iterables_are_skips,
+)
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped as any_dependency_skipped,
+)
+from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
+from ecoscope_workflows_core.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
+)
+from ecoscope_workflows_core.tasks.transformation import (
+    convert_column_values_to_string as convert_column_values_to_string,
+)
+from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_patrol_events as get_patrol_events,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_patrol_observations as get_patrol_observations,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df as persist_df
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    set_patrol_status as set_patrol_status,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    set_patrol_types as set_patrol_types,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
-    relocations_to_trajectory,
+    process_relocations as process_relocations,
 )
-from ecoscope_workflows_core.tasks.transformation import add_temporal_index
-from ecoscope_workflows_core.tasks.transformation import map_columns
-from ecoscope_workflows_ext_ecoscope.tasks.transformation import apply_color_map
+from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+    relocations_to_trajectory as relocations_to_trajectory,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.results import (
+    create_point_layer as create_point_layer,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.results import (
+    create_polyline_layer as create_polyline_layer,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap as draw_ecomap
+from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps as set_base_maps
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
-    apply_reloc_coord_filter,
+    apply_color_map as apply_color_map,
 )
-from ecoscope_workflows_core.tasks.transformation import convert_column_values_to_string
-from ecoscope_workflows_core.tasks.groupby import split_groups
-from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df
-from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
-from ecoscope_workflows_ext_ecoscope.tasks.results import create_point_layer
-from ecoscope_workflows_ext_ecoscope.tasks.results import create_polyline_layer
-from ecoscope_workflows_core.tasks.groupby import groupbykey
-from ecoscope_workflows_core.tasks.skip import all_keyed_iterables_are_skips
-from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap
-from ecoscope_workflows_core.tasks.io import persist_text
-from ecoscope_workflows_core.tasks.results import create_map_widget_single_view
-from ecoscope_workflows_core.tasks.results import merge_widget_views
-from ecoscope_workflows_core.tasks.results import gather_dashboard
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    apply_reloc_coord_filter as apply_reloc_coord_filter,
+)
 
 # %% [markdown]
 # ## Workflow Details
@@ -63,7 +94,9 @@ workflow_details_params = dict(
 
 
 workflow_details = (
-    set_workflow_details.handle_errors(task_instance_id="workflow_details")
+    set_workflow_details.set_task_instance_id("workflow_details")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -91,7 +124,9 @@ er_client_name_params = dict(
 
 
 er_client_name = (
-    set_er_connection.handle_errors(task_instance_id="er_client_name")
+    set_er_connection.set_task_instance_id("er_client_name")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -113,6 +148,7 @@ er_client_name = (
 time_range_params = dict(
     since=...,
     until=...,
+    timezone=...,
 )
 
 # %%
@@ -120,7 +156,9 @@ time_range_params = dict(
 
 
 time_range = (
-    set_time_range.handle_errors(task_instance_id="time_range")
+    set_time_range.set_task_instance_id("time_range")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -148,7 +186,9 @@ er_patrol_types_params = dict(
 
 
 er_patrol_types = (
-    set_patrol_types.handle_errors(task_instance_id="er_patrol_types")
+    set_patrol_types.set_task_instance_id("er_patrol_types")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -176,7 +216,9 @@ er_patrol_status_params = dict(
 
 
 er_patrol_status = (
-    set_patrol_status.handle_errors(task_instance_id="er_patrol_status")
+    set_patrol_status.set_task_instance_id("er_patrol_status")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -195,14 +237,18 @@ er_patrol_status = (
 # %%
 # parameters
 
-patrol_obs_params = dict()
+patrol_obs_params = dict(
+    sub_page_size=...,
+)
 
 # %%
 # call the task
 
 
 patrol_obs = (
-    get_patrol_observations.handle_errors(task_instance_id="patrol_obs")
+    get_patrol_observations.set_task_instance_id("patrol_obs")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -232,6 +278,8 @@ patrol_obs = (
 fetch_patrol_events_params = dict(
     event_types=...,
     include_null_geometry=...,
+    sub_page_size=...,
+    include_display_values=...,
 )
 
 # %%
@@ -239,7 +287,9 @@ fetch_patrol_events_params = dict(
 
 
 fetch_patrol_events = (
-    get_patrol_events.handle_errors(task_instance_id="fetch_patrol_events")
+    get_patrol_events.set_task_instance_id("fetch_patrol_events")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -275,7 +325,9 @@ groupers_params = dict(
 
 
 groupers = (
-    set_groupers.handle_errors(task_instance_id="groupers")
+    set_groupers.set_task_instance_id("groupers")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -301,7 +353,9 @@ patrol_reloc_params = dict()
 
 
 patrol_reloc = (
-    process_relocations.handle_errors(task_instance_id="patrol_reloc")
+    process_relocations.set_task_instance_id("patrol_reloc")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -350,7 +404,9 @@ set_patrol_traj_color_column_params = dict()
 
 
 set_patrol_traj_color_column = (
-    set_string_var.handle_errors(task_instance_id="set_patrol_traj_color_column")
+    set_string_var.set_task_instance_id("set_patrol_traj_color_column")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -378,7 +434,9 @@ patrol_traj_params = dict(
 
 
 patrol_traj = (
-    relocations_to_trajectory.handle_errors(task_instance_id="patrol_traj")
+    relocations_to_trajectory.set_task_instance_id("patrol_traj")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -404,7 +462,9 @@ traj_add_temporal_index_params = dict()
 
 
 traj_add_temporal_index = (
-    add_temporal_index.handle_errors(task_instance_id="traj_add_temporal_index")
+    add_temporal_index.set_task_instance_id("traj_add_temporal_index")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -437,7 +497,9 @@ traj_rename_grouper_columns_params = dict()
 
 
 traj_rename_grouper_columns = (
-    map_columns.handle_errors(task_instance_id="traj_rename_grouper_columns")
+    map_columns.set_task_instance_id("traj_rename_grouper_columns")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -474,7 +536,9 @@ traj_colormap_params = dict()
 
 
 traj_colormap = (
-    apply_color_map.handle_errors(task_instance_id="traj_colormap")
+    apply_color_map.set_task_instance_id("traj_colormap")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -526,9 +590,9 @@ filter_fetched_patrol_events_params = dict(
 
 
 filter_fetched_patrol_events = (
-    apply_reloc_coord_filter.handle_errors(
-        task_instance_id="filter_fetched_patrol_events"
-    )
+    apply_reloc_coord_filter.set_task_instance_id("filter_fetched_patrol_events")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -559,7 +623,9 @@ pe_add_temporal_index_params = dict()
 
 
 pe_add_temporal_index = (
-    add_temporal_index.handle_errors(task_instance_id="pe_add_temporal_index")
+    add_temporal_index.set_task_instance_id("pe_add_temporal_index")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -592,7 +658,9 @@ pe_colormap_params = dict()
 
 
 pe_colormap = (
-    apply_color_map.handle_errors(task_instance_id="pe_colormap")
+    apply_color_map.set_task_instance_id("pe_colormap")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -624,9 +692,9 @@ patrol_traj_cols_to_string_params = dict()
 
 
 patrol_traj_cols_to_string = (
-    convert_column_values_to_string.handle_errors(
-        task_instance_id="patrol_traj_cols_to_string"
-    )
+    convert_column_values_to_string.set_task_instance_id("patrol_traj_cols_to_string")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -656,7 +724,9 @@ pe_cols_to_string_params = dict()
 
 
 pe_cols_to_string = (
-    convert_column_values_to_string.handle_errors(task_instance_id="pe_cols_to_string")
+    convert_column_values_to_string.set_task_instance_id("pe_cols_to_string")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -689,7 +759,9 @@ filter_patrol_events_params = dict(
 
 
 filter_patrol_events = (
-    apply_reloc_coord_filter.handle_errors(task_instance_id="filter_patrol_events")
+    apply_reloc_coord_filter.set_task_instance_id("filter_patrol_events")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -720,7 +792,9 @@ split_patrol_traj_groups_params = dict()
 
 
 split_patrol_traj_groups = (
-    split_groups.handle_errors(task_instance_id="split_patrol_traj_groups")
+    split_groups.set_task_instance_id("split_patrol_traj_groups")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -746,7 +820,9 @@ split_pe_groups_params = dict()
 
 
 split_pe_groups = (
-    split_groups.handle_errors(task_instance_id="split_pe_groups")
+    split_groups.set_task_instance_id("split_pe_groups")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -772,7 +848,9 @@ persist_traj_gpkg_params = dict()
 
 
 persist_traj_gpkg = (
-    persist_df.handle_errors(task_instance_id="persist_traj_gpkg")
+    persist_df.set_task_instance_id("persist_traj_gpkg")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -804,7 +882,9 @@ persist_traj_parquet_params = dict()
 
 
 persist_traj_parquet = (
-    persist_df.handle_errors(task_instance_id="persist_traj_parquet")
+    persist_df.set_task_instance_id("persist_traj_parquet")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -836,7 +916,9 @@ persist_events_gpkg_params = dict()
 
 
 persist_events_gpkg = (
-    persist_df.handle_errors(task_instance_id="persist_events_gpkg")
+    persist_df.set_task_instance_id("persist_events_gpkg")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -868,7 +950,9 @@ persist_events_parquet_params = dict()
 
 
 persist_events_parquet = (
-    persist_df.handle_errors(task_instance_id="persist_events_parquet")
+    persist_df.set_task_instance_id("persist_events_parquet")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -902,7 +986,9 @@ base_map_defs_params = dict(
 
 
 base_map_defs = (
-    set_base_maps.handle_errors(task_instance_id="base_map_defs")
+    set_base_maps.set_task_instance_id("base_map_defs")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -930,7 +1016,9 @@ patrol_events_map_layers_params = dict(
 
 
 patrol_events_map_layers = (
-    create_point_layer.handle_errors(task_instance_id="patrol_events_map_layers")
+    create_point_layer.set_task_instance_id("patrol_events_map_layers")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -964,7 +1052,9 @@ patrol_traj_map_layers_params = dict(
 
 
 patrol_traj_map_layers = (
-    create_polyline_layer.handle_errors(task_instance_id="patrol_traj_map_layers")
+    create_polyline_layer.set_task_instance_id("patrol_traj_map_layers")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -998,7 +1088,9 @@ combined_traj_and_pe_map_layers_params = dict()
 
 
 combined_traj_and_pe_map_layers = (
-    groupbykey.handle_errors(task_instance_id="combined_traj_and_pe_map_layers")
+    groupbykey.set_task_instance_id("combined_traj_and_pe_map_layers")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             all_keyed_iterables_are_skips,
@@ -1024,6 +1116,7 @@ traj_patrol_events_ecomap_params = dict(
     north_arrow_style=...,
     legend_style=...,
     view_state=...,
+    widget_id=...,
 )
 
 # %%
@@ -1031,7 +1124,9 @@ traj_patrol_events_ecomap_params = dict(
 
 
 traj_patrol_events_ecomap = (
-    draw_ecomap.handle_errors(task_instance_id="traj_patrol_events_ecomap")
+    draw_ecomap.set_task_instance_id("traj_patrol_events_ecomap")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -1057,6 +1152,7 @@ traj_patrol_events_ecomap = (
 
 traj_pe_ecomap_html_urls_params = dict(
     filename=...,
+    filename_suffix=...,
 )
 
 # %%
@@ -1064,7 +1160,9 @@ traj_pe_ecomap_html_urls_params = dict(
 
 
 traj_pe_ecomap_html_urls = (
-    persist_text.handle_errors(task_instance_id="traj_pe_ecomap_html_urls")
+    persist_text.set_task_instance_id("traj_pe_ecomap_html_urls")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -1093,9 +1191,11 @@ traj_pe_map_widgets_single_views_params = dict()
 
 
 traj_pe_map_widgets_single_views = (
-    create_map_widget_single_view.handle_errors(
-        task_instance_id="traj_pe_map_widgets_single_views"
+    create_map_widget_single_view.set_task_instance_id(
+        "traj_pe_map_widgets_single_views"
     )
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -1124,7 +1224,9 @@ traj_pe_grouped_map_widget_params = dict()
 
 
 traj_pe_grouped_map_widget = (
-    merge_widget_views.handle_errors(task_instance_id="traj_pe_grouped_map_widget")
+    merge_widget_views.set_task_instance_id("traj_pe_grouped_map_widget")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,
@@ -1145,14 +1247,18 @@ traj_pe_grouped_map_widget = (
 # %%
 # parameters
 
-patrol_dashboard_params = dict()
+patrol_dashboard_params = dict(
+    warning=...,
+)
 
 # %%
 # call the task
 
 
 patrol_dashboard = (
-    gather_dashboard.handle_errors(task_instance_id="patrol_dashboard")
+    gather_dashboard.set_task_instance_id("patrol_dashboard")
+    .handle_errors()
+    .with_tracing()
     .skipif(
         conditions=[
             any_is_empty_df,

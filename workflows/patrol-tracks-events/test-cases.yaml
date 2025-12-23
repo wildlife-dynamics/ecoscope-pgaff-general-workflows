@@ -1,53 +1,35 @@
-all-grouper:
-  name: All Grouper
-  description: A demonstration of a workflow with no grouping.
-  params:
-    workflow_details:
-      name: "Example Workflow"
-      description: "An example workflow for testing purposes."
-    time_range:
-      since: "2015-01-01T00:00:00Z"
-      until: "2015-02-28T23:59:59Z"
-    groupers:
-      groupers: []
-    calculator:
-      a: 1
-      b: 1
-      operation: "add"
-
 month-grouper:
-  name: Month Grouper
-  description: A demonstration of a workflow with monthly grouping.
+  name: Monthly Grouper
   params:
     workflow_details:
-      name: "Example Workflow"
-      description: "An example workflow for testing purposes."
+      name: "Patrol Tracks Events Workflow"
+      description: "Process and visualize patrol observations and events."
+
+    er_client_name:
+      data_source:
+        name: "mep_dev"
+
+    er_patrol_types:
+      patrol_types: ["MEP_routine_vehicle_patrol_bravo_team"]
+
+    er_patrol_status:
+      status: ["done"]
+
+    fetch_patrol_events:
+      event_types: []
+
     time_range:
-      since: "2015-01-01T00:00:00Z"
-      until: "2015-02-28T23:59:59Z"
+      since: "2015-01-10T00:00:00Z"
+      until: "2015-01-15T23:59:59Z"
+
     groupers:
       groupers:
         - "%B"
-    calculator:
-      a: 1
-      b: 1
-      operation: "add"
 
-
-value-grouper:
-  name: Value Grouper
-  description: A demonstration of a workflow grouped by a value.
-  params:
-    workflow_details:
-      name: "Example Workflow"
-      description: "An example workflow for testing purposes."
-    groupers:
-      groupers:
-        - index_name: "test"
-    time_range:
-      since: "2015-01-01T00:00:00Z"
-      until: "2015-02-28T23:59:59Z"
-    calculator:
-      a: 1
-      b: 1
-      operation: "add"
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.1
+        - url: "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places_Alternate/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.8
+          max_zoom: 17
