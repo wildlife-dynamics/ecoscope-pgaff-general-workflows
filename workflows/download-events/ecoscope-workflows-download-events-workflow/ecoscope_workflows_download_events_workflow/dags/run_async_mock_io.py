@@ -12,6 +12,9 @@ import os
 import warnings  # 🧪
 
 from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
+from ecoscope_workflows_core.tasks.config import (
+    set_workflow_details as set_workflow_details,
+)
 from ecoscope_workflows_core.tasks.filter import (
     get_timezone_from_time_range as get_timezone_from_time_range,
 )
@@ -27,9 +30,16 @@ get_events = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_events",  # 🧪
 )  # 🧪
+from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
 from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
+from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
+from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
-    gather_output_files as gather_output_files,
+    create_map_widget_single_view as create_map_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope_workflows_core.tasks.results import (
+    merge_widget_views as merge_widget_views,
 )
 from ecoscope_workflows_core.tasks.skip import (
     any_dependency_skipped as any_dependency_skipped,
@@ -55,6 +65,17 @@ from ecoscope_workflows_ext_custom.tasks.transformation import (
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     drop_column_prefix as drop_column_prefix,
 )
+from ecoscope_workflows_ext_ecoscope.tasks.results import (
+    create_point_layer as create_point_layer,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap as draw_ecomap
+from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps as set_base_maps
+from ecoscope_workflows_ext_ecoscope.tasks.skip import (
+    all_geometry_are_none as all_geometry_are_none,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    apply_color_map as apply_color_map,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     apply_reloc_coord_filter as apply_reloc_coord_filter,
 )
@@ -71,25 +92,64 @@ def main(params: Params):
     params_dict = json.loads(params.model_dump_json(exclude_unset=True))
 
     dependencies = {
+        "workflow_details": [],
         "time_range": [],
         "get_timezone": ["time_range"],
         "er_client_name": [],
         "get_event_data": ["er_client_name", "time_range"],
-        "groupers": [],
         "process_columns": ["get_event_data"],
-        "convert_to_user_timezone": ["get_event_data", "get_timezone"],
-        "events_add_temporal_index": ["convert_to_user_timezone", "groupers"],
-        "extract_reported_by": ["events_add_temporal_index"],
+        "convert_to_user_timezone": ["process_columns", "get_timezone"],
+        "extract_reported_by": ["convert_to_user_timezone"],
         "normalize_event_details": ["extract_reported_by"],
         "drop_event_details_prefix": ["normalize_event_details"],
         "filter_events": ["drop_event_details_prefix"],
         "customize_columns": ["filter_events"],
         "sql_query": ["customize_columns"],
-        "persist_events": ["sql_query"],
-        "output_files": ["persist_events"],
+        "groupers": [],
+        "events_add_temporal_index": ["sql_query", "groupers"],
+        "split_event_groups": ["events_add_temporal_index", "groupers"],
+        "persist_events": ["split_event_groups"],
+        "events_colormap": ["sql_query", "split_event_groups"],
+        "rename_display_columns": ["events_colormap"],
+        "set_events_map_title": [],
+        "base_map_defs": [],
+        "grouped_events_map_layer": ["rename_display_columns"],
+        "grouped_events_ecomap": [
+            "base_map_defs",
+            "set_events_map_title",
+            "grouped_events_map_layer",
+        ],
+        "grouped_events_ecomap_html_url": ["grouped_events_ecomap"],
+        "grouped_events_map_widget": [
+            "set_events_map_title",
+            "grouped_events_ecomap_html_url",
+        ],
+        "grouped_events_map_widget_merge": ["grouped_events_map_widget"],
+        "events_dashboard": [
+            "workflow_details",
+            "grouped_events_map_widget_merge",
+            "groupers",
+            "time_range",
+        ],
     }
 
     nodes = {
+        "workflow_details": Node(
+            async_task=set_workflow_details.validate()
+            .set_task_instance_id("workflow_details")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("workflow_details") or {}),
+            method="call",
+        ),
         "time_range": Node(
             async_task=set_time_range.validate()
             .set_task_instance_id("time_range")
@@ -165,24 +225,9 @@ def main(params: Params):
                 "include_updates": False,
                 "include_related_events": False,
                 "include_null_geometry": True,
+                "include_display_values": True,
             }
             | (params_dict.get("get_event_data") or {}),
-            method="call",
-        ),
-        "groupers": Node(
-            async_task=set_groupers.validate()
-            .set_task_instance_id("groupers")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial=(params_dict.get("groupers") or {}),
             method="call",
         ),
         "process_columns": Node(
@@ -221,34 +266,11 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("get_event_data"),
+                "df": DependsOn("process_columns"),
                 "timezone": DependsOn("get_timezone"),
                 "columns": ["time"],
             }
             | (params_dict.get("convert_to_user_timezone") or {}),
-            method="call",
-        ),
-        "events_add_temporal_index": Node(
-            async_task=add_temporal_index.validate()
-            .set_task_instance_id("events_add_temporal_index")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "df": DependsOn("convert_to_user_timezone"),
-                "time_col": "time",
-                "groupers": DependsOn("groupers"),
-                "cast_to_datetime": True,
-                "format": "mixed",
-            }
-            | (params_dict.get("events_add_temporal_index") or {}),
             method="call",
         ),
         "extract_reported_by": Node(
@@ -265,7 +287,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("events_add_temporal_index"),
+                "df": DependsOn("convert_to_user_timezone"),
                 "column_name": "reported_by",
                 "field_name_options": ["name"],
                 "output_type": "str",
@@ -374,6 +396,65 @@ def main(params: Params):
             | (params_dict.get("sql_query") or {}),
             method="call",
         ),
+        "groupers": Node(
+            async_task=set_groupers.validate()
+            .set_task_instance_id("groupers")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("groupers") or {}),
+            method="call",
+        ),
+        "events_add_temporal_index": Node(
+            async_task=add_temporal_index.validate()
+            .set_task_instance_id("events_add_temporal_index")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("sql_query"),
+                "time_col": "event_time",
+                "groupers": DependsOn("groupers"),
+                "cast_to_datetime": True,
+                "format": "mixed",
+            }
+            | (params_dict.get("events_add_temporal_index") or {}),
+            method="call",
+        ),
+        "split_event_groups": Node(
+            async_task=split_groups.validate()
+            .set_task_instance_id("split_event_groups")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("events_add_temporal_index"),
+                "groupers": DependsOn("groupers"),
+            }
+            | (params_dict.get("split_event_groups") or {}),
+            method="call",
+        ),
         "persist_events": Node(
             async_task=persist_df_wrapper.validate()
             .set_task_instance_id("persist_events")
@@ -387,15 +468,18 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("sql_query"),
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             }
             | (params_dict.get("persist_events") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_event_groups"),
+            },
         ),
-        "output_files": Node(
-            async_task=gather_output_files.validate()
-            .set_task_instance_id("output_files")
+        "events_colormap": Node(
+            async_task=apply_color_map.validate()
+            .set_task_instance_id("events_colormap")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -407,9 +491,238 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "files": DependsOn("persist_events"),
+                "df": DependsOn("sql_query"),
+                "input_column_name": "event_type",
+                "colormap": "tab20b",
+                "output_column_name": "event_type_colormap",
             }
-            | (params_dict.get("output_files") or {}),
+            | (params_dict.get("events_colormap") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_event_groups"),
+            },
+        ),
+        "rename_display_columns": Node(
+            async_task=map_columns.validate()
+            .set_task_instance_id("rename_display_columns")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "drop_columns": [],
+                "retain_columns": [],
+                "rename_columns": {
+                    "serial_number": "Event Serial",
+                    "event_time": "Event Time",
+                    "event_type_display": "Event Type",
+                    "reported_by_name": "Reported By",
+                },
+            }
+            | (params_dict.get("rename_display_columns") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("events_colormap"),
+            },
+        ),
+        "set_events_map_title": Node(
+            async_task=set_string_var.validate()
+            .set_task_instance_id("set_events_map_title")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "var": "Events Map",
+            }
+            | (params_dict.get("set_events_map_title") or {}),
+            method="call",
+        ),
+        "base_map_defs": Node(
+            async_task=set_base_maps.validate()
+            .set_task_instance_id("base_map_defs")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("base_map_defs") or {}),
+            method="call",
+        ),
+        "grouped_events_map_layer": Node(
+            async_task=create_point_layer.validate()
+            .set_task_instance_id("grouped_events_map_layer")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                    all_geometry_are_none,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "layer_style": {
+                    "fill_color_column": "event_type_colormap",
+                    "get_radius": 5,
+                },
+                "legend": {
+                    "label_column": "Event Type",
+                    "color_column": "event_type_colormap",
+                },
+                "tooltip_columns": [
+                    "Event Serial",
+                    "Event Time",
+                    "Event Type",
+                    "Reported By",
+                ],
+            }
+            | (params_dict.get("grouped_events_map_layer") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["geodataframe"],
+                "argvalues": DependsOn("rename_display_columns"),
+            },
+        ),
+        "grouped_events_ecomap": Node(
+            async_task=draw_ecomap.validate()
+            .set_task_instance_id("grouped_events_ecomap")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": None,
+                "tile_layers": DependsOn("base_map_defs"),
+                "north_arrow_style": {"placement": "top-left"},
+                "legend_style": {
+                    "title": "Event Type",
+                    "format_title": False,
+                    "placement": "bottom-right",
+                },
+                "static": False,
+                "max_zoom": 20,
+                "widget_id": DependsOn("set_events_map_title"),
+            }
+            | (params_dict.get("grouped_events_ecomap") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["geo_layers"],
+                "argvalues": DependsOn("grouped_events_map_layer"),
+            },
+        ),
+        "grouped_events_ecomap_html_url": Node(
+            async_task=persist_text.validate()
+            .set_task_instance_id("grouped_events_ecomap_html_url")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filename_suffix": "v2",
+            }
+            | (params_dict.get("grouped_events_ecomap_html_url") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["text"],
+                "argvalues": DependsOn("grouped_events_ecomap"),
+            },
+        ),
+        "grouped_events_map_widget": Node(
+            async_task=create_map_widget_single_view.validate()
+            .set_task_instance_id("grouped_events_map_widget")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": DependsOn("set_events_map_title"),
+            }
+            | (params_dict.get("grouped_events_map_widget") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("grouped_events_ecomap_html_url"),
+            },
+        ),
+        "grouped_events_map_widget_merge": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("grouped_events_map_widget_merge")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("grouped_events_map_widget"),
+            }
+            | (params_dict.get("grouped_events_map_widget_merge") or {}),
+            method="call",
+        ),
+        "events_dashboard": Node(
+            async_task=gather_dashboard.validate()
+            .set_task_instance_id("events_dashboard")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "details": DependsOn("workflow_details"),
+                "widgets": DependsOn("grouped_events_map_widget_merge"),
+                "groupers": DependsOn("groupers"),
+                "time_range": DependsOn("time_range"),
+            }
+            | (params_dict.get("events_dashboard") or {}),
             method="call",
         ),
     }

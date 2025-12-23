@@ -2,6 +2,9 @@ base:
   name: Base Test Case
   mock_io: true
   params:
+    workflow_details:
+      name: "Events"
+      description: "A workflow to download events."
     time_range:
       since: "2025-08-01"
       until: "2025-08-31"
@@ -20,11 +23,22 @@ base:
     persist_events:
       filetypes: ["geoparquet", "csv"]
       sanitize: false
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 1.0
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.5
+          max_zoom: 17
+          min_zoom: null
 
 with-details:
   name: With Event Details
   mock_io: false
   params:
+    workflow_details:
+      name: "Events"
+      description: "A workflow to download events."
     time_range:
       since: "2025-12-21T00:00:00Z"
       until: "2025-12-23T23:59:59Z"
@@ -44,3 +58,46 @@ with-details:
       filetypes: ["geoparquet", "csv"]
       sanitize: true
       filename: "events_with_details"
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 1.0
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.5
+          max_zoom: 17
+          min_zoom: null
+
+empty-results:
+  name: Empty Results
+  mock_io: false
+  params:
+    workflow_details:
+      name: "Events"
+      description: "A workflow to download events."
+    time_range:
+      since: "2025-12-21T00:00:00Z"
+      until: "2024-12-23T23:59:59Z" # End date before start date to ensure no results
+    er_client_name:
+      data_source:
+        name: "mep_dev"
+    get_event_data:
+      event_columns: ["id", "time", "event_type", "event_category", "reported_by", "serial_number", "geometry", "event_details"]
+      event_types: ["arrest_rep", "accident_rep"]
+    filter_events:
+      filter_point_coords: [
+        {"x": 180.0, "y": 90.0},
+        {"x": 0.0, "y": 0.0},
+        {"x": 1.0, "y": 1.0},
+      ]
+    persist_events:
+      filetypes: ["geoparquet", "csv"]
+      sanitize: true
+      filename: "events_with_details"
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 1.0
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.5
+          max_zoom: 17
+          min_zoom: null  

@@ -12,14 +12,24 @@
 
 import os
 
+from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
+from ecoscope_workflows_core.tasks.config import (
+    set_workflow_details as set_workflow_details,
+)
 from ecoscope_workflows_core.tasks.filter import (
     get_timezone_from_time_range as get_timezone_from_time_range,
 )
 from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
 from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
+from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
+from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
 from ecoscope_workflows_core.tasks.results import (
-    gather_output_files as gather_output_files,
+    create_map_widget_single_view as create_map_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope_workflows_core.tasks.results import (
+    merge_widget_views as merge_widget_views,
 )
 from ecoscope_workflows_core.tasks.skip import (
     any_dependency_skipped as any_dependency_skipped,
@@ -46,12 +56,55 @@ from ecoscope_workflows_ext_custom.tasks.transformation import (
     drop_column_prefix as drop_column_prefix,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
+from ecoscope_workflows_ext_ecoscope.tasks.results import (
+    create_point_layer as create_point_layer,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap as draw_ecomap
+from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps as set_base_maps
+from ecoscope_workflows_ext_ecoscope.tasks.skip import (
+    all_geometry_are_none as all_geometry_are_none,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    apply_color_map as apply_color_map,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     apply_reloc_coord_filter as apply_reloc_coord_filter,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     normalize_column as normalize_column,
 )
+
+# %% [markdown]
+# ## Workflow Details
+
+# %%
+# parameters
+
+workflow_details_params = dict(
+    name=...,
+    description=...,
+    image_url=...,
+)
+
+# %%
+# call the task
+
+
+workflow_details = (
+    set_workflow_details.set_task_instance_id("workflow_details")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**workflow_details_params)
+    .call()
+)
+
 
 # %% [markdown]
 # ## Time Range
@@ -152,7 +205,6 @@ er_client_name = (
 get_event_data_params = dict(
     event_types=...,
     event_columns=...,
-    include_display_values=...,
 )
 
 # %%
@@ -178,38 +230,9 @@ get_event_data = (
         include_updates=False,
         include_related_events=False,
         include_null_geometry=True,
+        include_display_values=True,
         **get_event_data_params,
     )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Group Data
-
-# %%
-# parameters
-
-groupers_params = dict(
-    groupers=...,
-)
-
-# %%
-# call the task
-
-
-groupers = (
-    set_groupers.set_task_instance_id("groupers")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(**groupers_params)
     .call()
 )
 
@@ -272,45 +295,10 @@ convert_to_user_timezone = (
         unpack_depth=1,
     )
     .partial(
-        df=get_event_data,
+        df=process_columns,
         timezone=get_timezone,
         columns=["time"],
         **convert_to_user_timezone_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Add temporal index to Events
-
-# %%
-# parameters
-
-events_add_temporal_index_params = dict()
-
-# %%
-# call the task
-
-
-events_add_temporal_index = (
-    add_temporal_index.set_task_instance_id("events_add_temporal_index")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        df=convert_to_user_timezone,
-        time_col="time",
-        groupers=groupers,
-        cast_to_datetime=True,
-        format="mixed",
-        **events_add_temporal_index_params,
     )
     .call()
 )
@@ -340,7 +328,7 @@ extract_reported_by = (
         unpack_depth=1,
     )
     .partial(
-        df=events_add_temporal_index,
+        df=convert_to_user_timezone,
         column_name="reported_by",
         field_name_options=["name"],
         output_type="str",
@@ -515,6 +503,101 @@ sql_query = (
 
 
 # %% [markdown]
+# ## Group Data
+
+# %%
+# parameters
+
+groupers_params = dict(
+    groupers=...,
+)
+
+# %%
+# call the task
+
+
+groupers = (
+    set_groupers.set_task_instance_id("groupers")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**groupers_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Add temporal index to Events
+
+# %%
+# parameters
+
+events_add_temporal_index_params = dict()
+
+# %%
+# call the task
+
+
+events_add_temporal_index = (
+    add_temporal_index.set_task_instance_id("events_add_temporal_index")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        df=sql_query,
+        time_col="event_time",
+        groupers=groupers,
+        cast_to_datetime=True,
+        format="mixed",
+        **events_add_temporal_index_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Split Events by Group
+
+# %%
+# parameters
+
+split_event_groups_params = dict()
+
+# %%
+# call the task
+
+
+split_event_groups = (
+    split_groups.set_task_instance_id("split_event_groups")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        df=events_add_temporal_index, groupers=groupers, **split_event_groups_params
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Persist Events
 
 # %%
@@ -541,28 +624,26 @@ persist_events = (
         unpack_depth=1,
     )
     .partial(
-        df=sql_query,
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        **persist_events_params,
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"], **persist_events_params
     )
-    .call()
+    .mapvalues(argnames=["df"], argvalues=split_event_groups)
 )
 
 
 # %% [markdown]
-# ## Gather Output Files
+# ## Events Colormap
 
 # %%
 # parameters
 
-output_files_params = dict()
+events_colormap_params = dict()
 
 # %%
 # call the task
 
 
-output_files = (
-    gather_output_files.set_task_instance_id("output_files")
+events_colormap = (
+    apply_color_map.set_task_instance_id("events_colormap")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -572,6 +653,314 @@ output_files = (
         ],
         unpack_depth=1,
     )
-    .partial(files=persist_events, **output_files_params)
+    .partial(
+        df=sql_query,
+        input_column_name="event_type",
+        colormap="tab20b",
+        output_column_name="event_type_colormap",
+        **events_colormap_params,
+    )
+    .mapvalues(argnames=["df"], argvalues=split_event_groups)
+)
+
+
+# %% [markdown]
+# ## Rename columns for map tooltip display
+
+# %%
+# parameters
+
+rename_display_columns_params = dict()
+
+# %%
+# call the task
+
+
+rename_display_columns = (
+    map_columns.set_task_instance_id("rename_display_columns")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        drop_columns=[],
+        retain_columns=[],
+        rename_columns={
+            "serial_number": "Event Serial",
+            "event_time": "Event Time",
+            "event_type_display": "Event Type",
+            "reported_by_name": "Reported By",
+        },
+        **rename_display_columns_params,
+    )
+    .mapvalues(argnames=["df"], argvalues=events_colormap)
+)
+
+
+# %% [markdown]
+# ## Set Events Map Title
+
+# %%
+# parameters
+
+set_events_map_title_params = dict()
+
+# %%
+# call the task
+
+
+set_events_map_title = (
+    set_string_var.set_task_instance_id("set_events_map_title")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(var="Events Map", **set_events_map_title_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Map Base Layers
+
+# %%
+# parameters
+
+base_map_defs_params = dict(
+    base_maps=...,
+)
+
+# %%
+# call the task
+
+
+base_map_defs = (
+    set_base_maps.set_task_instance_id("base_map_defs")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**base_map_defs_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Create map layer from grouped Events
+
+# %%
+# parameters
+
+grouped_events_map_layer_params = dict(
+    zoom=...,
+)
+
+# %%
+# call the task
+
+
+grouped_events_map_layer = (
+    create_point_layer.set_task_instance_id("grouped_events_map_layer")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+            all_geometry_are_none,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        layer_style={"fill_color_column": "event_type_colormap", "get_radius": 5},
+        legend={"label_column": "Event Type", "color_column": "event_type_colormap"},
+        tooltip_columns=["Event Serial", "Event Time", "Event Type", "Reported By"],
+        **grouped_events_map_layer_params,
+    )
+    .mapvalues(argnames=["geodataframe"], argvalues=rename_display_columns)
+)
+
+
+# %% [markdown]
+# ## Draw Ecomap from grouped Events
+
+# %%
+# parameters
+
+grouped_events_ecomap_params = dict(
+    view_state=...,
+)
+
+# %%
+# call the task
+
+
+grouped_events_ecomap = (
+    draw_ecomap.set_task_instance_id("grouped_events_ecomap")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        title=None,
+        tile_layers=base_map_defs,
+        north_arrow_style={"placement": "top-left"},
+        legend_style={
+            "title": "Event Type",
+            "format_title": False,
+            "placement": "bottom-right",
+        },
+        static=False,
+        max_zoom=20,
+        widget_id=set_events_map_title,
+        **grouped_events_ecomap_params,
+    )
+    .mapvalues(argnames=["geo_layers"], argvalues=grouped_events_map_layer)
+)
+
+
+# %% [markdown]
+# ## Persist grouped Events Ecomap as Text
+
+# %%
+# parameters
+
+grouped_events_ecomap_html_url_params = dict(
+    filename=...,
+)
+
+# %%
+# call the task
+
+
+grouped_events_ecomap_html_url = (
+    persist_text.set_task_instance_id("grouped_events_ecomap_html_url")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filename_suffix="v2",
+        **grouped_events_ecomap_html_url_params,
+    )
+    .mapvalues(argnames=["text"], argvalues=grouped_events_ecomap)
+)
+
+
+# %% [markdown]
+# ## Create grouped Events Map Widget
+
+# %%
+# parameters
+
+grouped_events_map_widget_params = dict()
+
+# %%
+# call the task
+
+
+grouped_events_map_widget = (
+    create_map_widget_single_view.set_task_instance_id("grouped_events_map_widget")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            never,
+        ],
+        unpack_depth=1,
+    )
+    .partial(title=set_events_map_title, **grouped_events_map_widget_params)
+    .map(argnames=["view", "data"], argvalues=grouped_events_ecomap_html_url)
+)
+
+
+# %% [markdown]
+# ## Merge Events Map Widget Views
+
+# %%
+# parameters
+
+grouped_events_map_widget_merge_params = dict()
+
+# %%
+# call the task
+
+
+grouped_events_map_widget_merge = (
+    merge_widget_views.set_task_instance_id("grouped_events_map_widget_merge")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        widgets=grouped_events_map_widget, **grouped_events_map_widget_merge_params
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Create Dashboard with Map Widgets
+
+# %%
+# parameters
+
+events_dashboard_params = dict(
+    warning=...,
+)
+
+# %%
+# call the task
+
+
+events_dashboard = (
+    gather_dashboard.set_task_instance_id("events_dashboard")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        details=workflow_details,
+        widgets=grouped_events_map_widget_merge,
+        groupers=groupers,
+        time_range=time_range,
+        **events_dashboard_params,
+    )
     .call()
 )
