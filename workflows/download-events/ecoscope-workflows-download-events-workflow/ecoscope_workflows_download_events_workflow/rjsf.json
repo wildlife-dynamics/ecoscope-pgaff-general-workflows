@@ -105,7 +105,7 @@
           "description": "Subdirectory inside output_dir to store attachments."
         },
         "skip_download": {
-          "default": false,
+          "default": true,
           "title": "Skip Download",
           "type": "boolean",
           "description": "If True, skip downloading and return empty list."

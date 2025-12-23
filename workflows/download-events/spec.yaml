@@ -12,6 +12,7 @@ requirements:
 rjsf-overrides:
   properties:
     persist_events.properties.sanitize.default: true
+    download_attachments.properties.skip_download.default: true
     filter_events.filter_point_coords.items.ui:options.label: false
     base_map_defs.base_maps.items.ui:options.label: false
 task-instance-defaults:

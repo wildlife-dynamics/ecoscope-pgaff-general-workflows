@@ -31,6 +31,8 @@ base:
           opacity: 0.5
           max_zoom: 17
           min_zoom: null
+    download_attachments:
+      skip_download: true
 
 with-details:
   name: With Event Details
@@ -66,6 +68,8 @@ with-details:
           opacity: 0.5
           max_zoom: 17
           min_zoom: null
+    download_attachments:
+      skip_download: true
 
 empty-results:
   name: Empty Results
@@ -137,3 +141,5 @@ with-attachments:
           opacity: 0.5
           max_zoom: 17
           min_zoom: null
+    download_attachments:
+      skip_download: false
