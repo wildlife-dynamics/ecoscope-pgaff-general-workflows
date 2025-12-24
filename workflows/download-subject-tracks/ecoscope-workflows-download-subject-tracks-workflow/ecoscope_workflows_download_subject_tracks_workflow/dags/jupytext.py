@@ -687,7 +687,7 @@ traj_map_layers = (
     .partial(
         layer_style={"color_column": "subject_name_colormap"},
         legend={
-            "label_column": "subject_name",
+            "label_column": "Subject Name",
             "color_column": "subject_name_colormap",
         },
         tooltip_columns=[

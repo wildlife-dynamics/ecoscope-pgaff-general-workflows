@@ -156,7 +156,6 @@ workflow:
     id: base_map_defs
     task: set_base_maps
 
-  # todo: colormap by subject
   - name: Apply Color to Trajectories By Subject
     id: colormap_traj
     task: apply_color_map
@@ -194,7 +193,7 @@ workflow:
       layer_style:
         color_column: "subject_name_colormap"
       legend:
-        label_column: "subject_name"
+        label_column: "Subject Name"
         color_column: "subject_name_colormap"
       tooltip_columns: ["Start", "Duration (s)", "Speed (kph)", "Nighttime", "Subject Name", "Subject Sex"]
     mapvalues:
