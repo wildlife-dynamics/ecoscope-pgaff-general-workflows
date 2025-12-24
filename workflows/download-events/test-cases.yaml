@@ -81,8 +81,8 @@ with-details:
       name: "Events"
       description: "A workflow to download events."
     time_range:
-      since: "2015-12-21T00:00:00Z"
-      until: "2015-12-23T23:59:59Z"
+      since: "2025-12-21T00:00:00Z"
+      until: "2025-12-23T23:59:59Z"
     er_client_name:
       data_source:
         name: "mep_dev"
