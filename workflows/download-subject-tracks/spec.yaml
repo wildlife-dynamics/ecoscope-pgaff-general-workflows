@@ -166,7 +166,7 @@ workflow:
       colormap: "tab20b"
     mapvalues:
       argnames: df
-      argvalues: ${{ workflow.split_groups.return }}
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
   - name: Rename columns for map tooltip display
     id: rename_display_columns
     task: map_columns
