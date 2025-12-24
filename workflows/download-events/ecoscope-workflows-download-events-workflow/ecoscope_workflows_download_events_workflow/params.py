@@ -43,7 +43,7 @@ class DownloadAttachments(BaseModel):
     )
     skip_download: Optional[bool] = Field(
         False,
-        description="If True, skip downloading and return empty list.",
+        description="If True, skip downloading attachments.",
         title="Skip Download",
     )
 

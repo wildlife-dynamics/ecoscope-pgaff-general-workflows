@@ -40,6 +40,7 @@ TEST_CASES_YAML = ARTIFACTS.parent / "test-cases.yaml"
 MATCHSPEC_OVERRIDE = "ecoscope-workflows-download-events-workflow"
 IO_TASKS_IMPORTABLE_REFERENCES = [
     "ecoscope_workflows_ext_ecoscope.tasks.io.get_events",
+    "ecoscope_workflows_ext_custom.tasks.io.download_event_attachments",
 ]
 
 yaml = ruamel.yaml.YAML(typ="safe")

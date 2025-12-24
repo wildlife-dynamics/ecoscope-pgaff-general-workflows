@@ -108,7 +108,7 @@
           "default": false,
           "title": "Skip Download",
           "type": "boolean",
-          "description": "If True, skip downloading and return empty list."
+          "description": "If True, skip downloading attachments."
         }
       },
       "required": [],
