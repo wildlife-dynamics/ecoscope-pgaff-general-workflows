@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, confloat, constr
 
@@ -335,4 +335,3 @@ class FormData(BaseModel):
         None, title="Persist Subject Trajectories"
     )
     base_map_defs: Optional[BaseMapDefs] = Field(None, title="Map Base Layers")
-    filter_events: Optional[Any] = None

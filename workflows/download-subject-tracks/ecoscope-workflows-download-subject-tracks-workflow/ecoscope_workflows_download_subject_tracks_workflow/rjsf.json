@@ -386,15 +386,6 @@
           }
         }
       }
-    },
-    "filter_events": {
-      "filter_point_coords": {
-        "items": {
-          "ui:options": {
-            "label": false
-          }
-        }
-      }
     }
   },
   "$defs": {
