@@ -54,6 +54,9 @@ from ecoscope_workflows_core.tasks.transformation import (
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_core.tasks.transformation import map_values as map_values
+from ecoscope_workflows_ext_custom.tasks.io import (
+    persist_df_wrapper as persist_df_wrapper,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
     process_relocations as process_relocations,
 )
@@ -99,6 +102,7 @@ def main(params: Params):
         "map_subject_sex": ["rename_grouper_columns"],
         "set_traj_map_title": [],
         "split_subject_traj_groups": ["map_subject_sex", "groupers"],
+        "persist_tracks": ["split_subject_traj_groups"],
         "base_map_defs": [],
         "colormap_traj": ["split_subject_traj_groups"],
         "rename_display_columns": ["colormap_traj"],
@@ -427,6 +431,28 @@ def main(params: Params):
             }
             | (params_dict.get("split_subject_traj_groups") or {}),
             method="call",
+        ),
+        "persist_tracks": Node(
+            async_task=persist_df_wrapper.validate()
+            .set_task_instance_id("persist_tracks")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            }
+            | (params_dict.get("persist_tracks") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_subject_traj_groups"),
+            },
         ),
         "base_map_defs": Node(
             async_task=set_base_maps.validate()

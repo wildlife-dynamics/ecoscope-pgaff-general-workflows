@@ -151,6 +151,18 @@ workflow:
       df: ${{ workflow.map_subject_sex.return }}
       groupers: ${{ workflow.groupers.return }}
 
+  - name: Persist Subject Trajectories
+    id: persist_tracks
+    task: persist_df_wrapper
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+    skipif:
+      conditions:
+        - never
+
   # Set base maps
   - name: Map Base Layers
     id: base_map_defs

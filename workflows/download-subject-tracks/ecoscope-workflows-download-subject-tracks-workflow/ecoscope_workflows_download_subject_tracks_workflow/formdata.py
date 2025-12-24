@@ -33,6 +33,31 @@ class SubjectGroup(BaseModel):
     subject_obs: Optional[SubjectObs] = Field(None, title="")
 
 
+class Filetype(str, Enum):
+    csv = "csv"
+    gpkg = "gpkg"
+    geoparquet = "geoparquet"
+
+
+class PersistTracks(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+        title="Filename",
+    )
+    filetypes: Optional[List[Filetype]] = Field(
+        ["csv"], description="The output format", title="Filetypes"
+    )
+    sanitize: Optional[bool] = Field(
+        False,
+        description="Whether to sanitize the dataframe for Arrow compatibility before persisting, recommended when including event or observation details",
+        title="Sanitize",
+    )
+
+
 class Url(str, Enum):
     https___tile_openstreetmap_org__z___x___y__png = (
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -306,5 +331,8 @@ class FormData(BaseModel):
     )
     groupers: Optional[Groupers] = Field(None, title="Group Data")
     subject_traj: Optional[SubjectTraj] = Field(None, title="Trajectory Segment Filter")
+    persist_tracks: Optional[PersistTracks] = Field(
+        None, title="Persist Subject Trajectories"
+    )
     base_map_defs: Optional[BaseMapDefs] = Field(None, title="Map Base Layers")
     filter_events: Optional[Any] = None

@@ -44,6 +44,9 @@ from ecoscope_workflows_core.tasks.transformation import (
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
 from ecoscope_workflows_core.tasks.transformation import map_values as map_values
+from ecoscope_workflows_ext_custom.tasks.io import (
+    persist_df_wrapper as persist_df_wrapper,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.io import (
     get_subjectgroup_observations as get_subjectgroup_observations,
 )
@@ -553,6 +556,39 @@ split_subject_traj_groups = (
     )
     .partial(df=map_subject_sex, groupers=groupers, **split_subject_traj_groups_params)
     .call()
+)
+
+
+# %% [markdown]
+# ## Persist Subject Trajectories
+
+# %%
+# parameters
+
+persist_tracks_params = dict(
+    filename=...,
+    filetypes=...,
+    sanitize=...,
+)
+
+# %%
+# call the task
+
+
+persist_tracks = (
+    persist_df_wrapper.set_task_instance_id("persist_tracks")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            never,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"], **persist_tracks_params
+    )
+    .mapvalues(argnames=["df"], argvalues=split_subject_traj_groups)
 )
 
 
