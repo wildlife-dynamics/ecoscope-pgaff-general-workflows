@@ -1,0 +1,257 @@
+id: download_subject_tracks
+requirements:
+  - name: ecoscope-workflows-core
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows/release/artifacts/
+  - name: ecoscope-workflows-ext-ecoscope
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows/release/artifacts/
+  - name: ecoscope-workflows-ext-custom
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
+  - name: pydeck
+    version: "*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+rjsf-overrides:
+  properties:
+    filter_events.filter_point_coords.items.ui:options.label: false
+    base_map_defs.base_maps.items.ui:options.label: false
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
+
+workflow:
+  - name: Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+
+  - name: Data Source
+    id: er_client_name
+    task: set_er_connection
+
+  - name: Time Range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%d %b %Y %H:%M:%S"
+
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
+
+  # subject group observations
+  - title: Subject Group
+    type: task-group
+    description: >-
+      Choose a subject group to analyze
+    tasks:
+      - name: "" # Get Subject Group Observations from EarthRanger
+        id: subject_obs
+        task: get_subjectgroup_observations
+        partial:
+          client: ${{ workflow.er_client_name.return }}
+          time_range: ${{ workflow.time_range.return }}
+          raise_on_empty: false
+          include_details: false
+          include_subjectsource_details: false
+
+  - name: Warn if mixed subtype
+    id: warn_if_mixed_subtype
+    task: mixed_subtype_warning
+    skipif:
+      conditions:
+        - never
+    partial:
+      subject_obs: ${{ workflow.subject_obs.return }}
+
+  - name: "Convert to timezone"
+    id: convert_to_user_timezone
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.subject_obs.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns: ["fixtime"]
+
+  # set 'global' groupers
+  - name: Group Data
+    id: groupers
+    task: set_groupers
+
+  - name: Transform Observations to Relocations
+    id: subject_reloc
+    task: process_relocations
+    partial:
+      observations: ${{ workflow.convert_to_user_timezone.return }}
+      relocs_columns: [
+        "groupby_col",
+        "fixtime",
+        "junk_status",
+        "geometry",
+        "extra__subject__name",
+        "extra__subject__subject_subtype",
+        "extra__subject__sex",
+      ]
+      filter_point_coords: [
+        {"x": 180.0, "y": 90.0},
+        {"x": 0.0, "y": 0.0},
+        {"x": 1.0, "y": 1.0},
+      ]
+  - name: Trajectory Segment Filter
+    id: subject_traj
+    task: relocations_to_trajectory
+    partial:
+      relocations: ${{ workflow.subject_reloc.return }}
+  - name: Add temporal index to Subject Trajectories
+    id: traj_add_temporal_index
+    task: add_temporal_index
+    partial:
+      df: ${{ workflow.subject_traj.return }}
+      time_col: "segment_start"
+      groupers: ${{ workflow.groupers.return }}
+      cast_to_datetime: true
+      format: "mixed"
+  - name: Rename value grouper columns
+    id: rename_grouper_columns
+    task: map_columns
+    partial:
+      df: ${{ workflow.traj_add_temporal_index.return }}
+      drop_columns: []
+      retain_columns: []
+      rename_columns:
+        extra__name: "subject_name"
+        extra__subject_subtype: "subject_subtype"
+        extra__sex: "subject_sex"
+  - name: Map Subject Sex Values
+    id: map_subject_sex
+    task: map_values
+    partial:
+      df: ${{ workflow.rename_grouper_columns.return }}
+      column_name: "subject_sex"
+      value_map:
+        "male": "male"
+        "female": "female"
+      missing_values: "replace"
+      replacement: "unknown"
+
+  # Widget Names
+  - name: "Set Trajectory Map Title"
+    id: set_traj_map_title
+    task: set_string_var
+    partial:
+      var: "Subject Group Trajectory Map"
+      
+  - name: Split Subject Trajectories by Group
+    id: split_subject_traj_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.map_subject_sex.return }}
+      groupers: ${{ workflow.groupers.return }}
+
+  # Set base maps
+  - name: Map Base Layers
+    id: base_map_defs
+    task: set_base_maps
+
+  # todo: colormap by subject
+  - name: Apply Color to Trajectories By Subject
+    id: colormap_traj
+    task: apply_color_map
+    partial:
+      input_column_name: "subject_name"
+      output_column_name: "subject_name_colormap"
+      colormap: "tab20b"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_groups.return }}
+  - name: Rename columns for map tooltip display
+    id: rename_display_columns
+    task: map_columns
+    partial:
+      drop_columns: []
+      retain_columns: []
+      rename_columns:
+        segment_start: "Start"
+        timespan_seconds: "Duration (s)"
+        speed_kmhr: "Speed (kph)"
+        subject_name: "Subject Name"
+        subject_sex: "Subject Sex"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.colormap_traj.return }}
+  - name: Create map layer for each trajectory group
+    id: traj_map_layers
+    task: create_polyline_layer
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+        - all_geometry_are_none
+    partial:
+      layer_style:
+        color_column: "subject_name_colormap"
+      legend:
+        label_column: "subject_name"
+        color_column: "subject_name_colormap"
+      tooltip_columns: ["Start", "Duration (s)", "Speed (kph)", "Nighttime", "Subject Name", "Subject Sex"]
+    mapvalues:
+      argnames: geodataframe
+      argvalues: ${{ workflow.rename_display_columns.return }}
+  - name: Draw Ecomaps for each trajectory group
+    id: traj_ecomap
+    task: draw_ecomap
+    partial:
+      tile_layers: ${{ workflow.base_map_defs.return }}
+      north_arrow_style:
+        placement: "top-left"
+      legend_style:
+        title: "Subject"
+        format_title: false
+        placement: "bottom-right"
+      static: false
+      title: null
+      max_zoom: 20
+      widget_id: ${{ workflow.set_traj_map_title.return }}
+    mapvalues:
+      argnames: geo_layers
+      argvalues: ${{ workflow.traj_map_layers.return }}
+  - name: Persist ecomap as Text
+    id: ecomap_html_urls
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "v2"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.traj_ecomap.return }}
+  - name: Create Map Widgets for Trajectories
+    id: traj_map_widgets_single_views
+    task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: ${{ workflow.set_traj_map_title.return }}
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.ecomap_html_urls.return }}
+  - name: Merge EcoMap Widget Views
+    id: traj_grouped_map_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.traj_map_widgets_single_views.return }}
+
+  # dashboard
+  - name: Create Dashboard with Subject Tracking Widgets
+    id: subject_tracking_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return}}
+      widgets:
+        - ${{ workflow.traj_grouped_map_widget.return }}
+      groupers: ${{ workflow.groupers.return }}
+      time_range: ${{ workflow.time_range.return}}
+      warning: ${{ workflow.warn_if_mixed_subtype.return}}
