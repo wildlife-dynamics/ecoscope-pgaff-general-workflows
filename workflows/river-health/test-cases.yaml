@@ -8,21 +8,13 @@ base:
     er_client_name:
       data_source:
         name: "gmmf"
-    subject_obs:
-      subject_group_name: "Subjects"
     time_range:
       since: "2025-12-20T00:00:00Z"
       until: "2025-12-25T23:59:59Z"
     groupers:
       groupers: []
-    persist_daily_summary:
-      filename: "weather_summary"
-    # precipitation_chart:
-    #   bar_chart_configs:
-    #     - column: "daily_precipitation"
-    #       agg_func: "sum"
-    #       label: "Precipitation (mm)"
-    #   category: "date"
+    # persist_daily_summary:
+    #   filename: "weather_summary"
 
 weather-station:
   name: Weather Station

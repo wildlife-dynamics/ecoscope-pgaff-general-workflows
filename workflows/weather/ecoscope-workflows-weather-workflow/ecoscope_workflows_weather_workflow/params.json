@@ -53,60 +53,6 @@
       "description": "Choose the period of time to analyze.",
       "title": "Time Range"
     },
-    "er_client_name": {
-      "additionalProperties": false,
-      "properties": {
-        "data_source": {
-          "$ref": "#/$defs/EarthRangerConnection",
-          "title": "",
-          "description": "Select one of your configured data sources."
-        }
-      },
-      "required": [
-        "data_source"
-      ],
-      "type": "object",
-      "title": "Select EarthRanger Data Source"
-    },
-    "subject_obs": {
-      "additionalProperties": false,
-      "properties": {
-        "subject_group_name": {
-          "title": "Subject Group Name",
-          "type": "string",
-          "description": "\u26a0\ufe0f The use of a group with mixed subtypes could lead to unexpected results"
-        }
-      },
-      "required": [
-        "subject_group_name"
-      ],
-      "type": "object",
-      "title": "Get Subject Group Observations from EarthRanger"
-    },
-    "filtered_weather_station": {
-      "additionalProperties": false,
-      "properties": {
-        "values": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Values",
-          "description": "The values to keep. If None, no filtering is applied."
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Select Weather Stations"
-    },
     "groupers": {
       "additionalProperties": false,
       "properties": {
@@ -131,6 +77,45 @@
       "type": "object",
       "required": [],
       "title": "Set Groupers"
+    },
+    "er_client_name": {
+      "additionalProperties": false,
+      "properties": {
+        "data_source": {
+          "$ref": "#/$defs/EarthRangerConnection",
+          "title": "",
+          "description": "Select one of your configured data sources."
+        }
+      },
+      "required": [
+        "data_source"
+      ],
+      "type": "object",
+      "title": "Select EarthRanger Data Source"
+    },
+    "filtered_weather_station": {
+      "additionalProperties": false,
+      "properties": {
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values",
+          "description": "The values to keep. If None, no filtering is applied."
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Select Weather Stations"
     },
     "df_with_temporal_index": {
       "additionalProperties": false,
@@ -281,19 +266,6 @@
       "title": "TimezoneInfo",
       "type": "object"
     },
-    "EarthRangerConnection": {
-      "properties": {
-        "name": {
-          "title": "Data Source",
-          "type": "string"
-        }
-      },
-      "required": [
-        "name"
-      ],
-      "title": "EarthRangerConnection",
-      "type": "object"
-    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -336,6 +308,19 @@
       "oneOf": [],
       "title": "Category",
       "type": "string"
+    },
+    "EarthRangerConnection": {
+      "properties": {
+        "name": {
+          "title": "Data Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "EarthRangerConnection",
+      "type": "object"
     },
     "LineStyle": {
       "properties": {
@@ -399,10 +384,9 @@
     "ui:order": [
       "workflow_details",
       "time_range",
-      "er_client_name",
-      "subject_obs",
-      "filtered_weather_station",
       "groupers",
+      "er_client_name",
+      "filtered_weather_station",
       "df_with_temporal_index",
       "persist_observations",
       "persist_daily_summary",

@@ -5,8 +5,8 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 8374d61b61343858d32aee8ae53ca01897e0599e4ad471e997f738f34605f09e
-artifacts_sha256_strict: 16eebee6fc7f38f4e9e9d8e807ab661fdd47a0e217d603f786af6adc7c891153
+artifacts_sha256_basic: e36e837210239450ca296c49e812568a379c50cf491bf0b06f38dcfae2899bc3
+artifacts_sha256_strict: e2684ee2ce7f14b6847d6bb938a588a69c90adb480ad04ca89ee57a1eeb1ab72
 installed_requirements:
 - channel: file:///tmp/ecoscope-workflows/release/artifacts/
   name: ecoscope-workflows-core
@@ -17,11 +17,11 @@ installed_requirements:
 - channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
   name: ecoscope-workflows-ext-custom
   version: {version: ==0.0.10.dev6+g2be3b5f5e}
-params_sha256: f245f6278b67f4d0412d677512c18235349fb28e6138d843932b707d927d54b2
-spec_sha256: 791e0ed2a0112317a1b0166b45ebe049311328a014d9cdc45c69b2710e9bc75c
+params_sha256: 2abae8b1efa8a8b9a3b1030ff88027900b9b7ad7c7040f6fb00fb18acdafa599
+spec_sha256: 6ffd388d82fca471f00d53aae2b45d41647e5826442aff7d530382fb1c46c0ec
 
 ```
 
-# ecoscope-workflows-climate-workflow
+# ecoscope-workflows-weather-workflow
 
 ![](graph.png)

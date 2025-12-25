@@ -18,17 +18,6 @@ class WorkflowDetails(BaseModel):
     description: Optional[str] = Field("", title="Workflow Description")
 
 
-class SubjectObs(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    subject_group_name: str = Field(
-        ...,
-        description="⚠️ The use of a group with mixed subtypes could lead to unexpected results",
-        title="Subject Group Name",
-    )
-
-
 class FilteredWeatherStation(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -107,16 +96,16 @@ class TimezoneInfo(BaseModel):
     utc: str = Field(..., title="Utc")
 
 
-class EarthRangerConnection(BaseModel):
-    name: str = Field(..., title="Data Source")
-
-
 class TemporalGrouper(RootModel[str]):
     root: str = Field(..., title="Time")
 
 
 class ValueGrouper(RootModel[str]):
     root: str = Field(..., title="Category")
+
+
+class EarthRangerConnection(BaseModel):
+    name: str = Field(..., title="Data Source")
 
 
 class LineStyle(BaseModel):
@@ -134,15 +123,6 @@ class TimeRange(BaseModel):
     timezone: Optional[TimezoneInfo] = Field(None, title="Timezone")
 
 
-class ErClientName(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    data_source: EarthRangerConnection = Field(
-        ..., description="Select one of your configured data sources.", title=""
-    )
-
-
 class Groupers(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -151,6 +131,15 @@ class Groupers(BaseModel):
         None,
         description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
         title=" ",
+    )
+
+
+class ErClientName(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    data_source: EarthRangerConnection = Field(
+        ..., description="Select one of your configured data sources.", title=""
     )
 
 
@@ -175,16 +164,13 @@ class FormData(BaseModel):
     time_range: Optional[TimeRange] = Field(
         None, description="Choose the period of time to analyze.", title="Time Range"
     )
+    groupers: Optional[Groupers] = Field(None, title="Set Groupers")
     er_client_name: Optional[ErClientName] = Field(
         None, title="Select EarthRanger Data Source"
-    )
-    subject_obs: Optional[SubjectObs] = Field(
-        None, title="Get Subject Group Observations from EarthRanger"
     )
     filtered_weather_station: Optional[FilteredWeatherStation] = Field(
         None, title="Select Weather Stations"
     )
-    groupers: Optional[Groupers] = Field(None, title="Set Groupers")
     df_with_temporal_index: Optional[DfWithTemporalIndex] = Field(
         None, title="Add temporal index"
     )

@@ -1,4 +1,4 @@
-id: climate
+id: weather
 requirements:
   - name: ecoscope-workflows-core
     version: "*"
@@ -27,6 +27,16 @@ workflow:
     partial:
       time_format: "%d %b %Y %H:%M:%S %Z"
   
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
+
+  - name: Set Groupers
+    id: groupers
+    task: set_groupers
+
   - name: Select EarthRanger Data Source
     id: er_client_name
     task: set_er_connection
@@ -41,6 +51,7 @@ workflow:
       raise_on_empty: true
       include_details: true
       include_subjectsource_details: true
+      subject_group_name: "Subjects"
   
   - name: Remove Extra Column Prefix
     id: drop_extra_prefix
@@ -48,6 +59,8 @@ workflow:
     partial:
       df: ${{ workflow.subject_obs.return }}
       prefix: "extra__"
+      duplicate_strategy: "suffix"
+
 
   - name: Preprocess Columns
     id: process_columns
@@ -59,11 +72,6 @@ workflow:
       rename_columns:
         subject__name: "weather_station"
 
-  - name: Extract Timezone Selection
-    id: get_timezone
-    task: get_timezone_from_time_range
-    partial:
-      time_range: ${{ workflow.time_range.return }}
 
   - name: "Convert to timezone"
     id: convert_to_user_timezone
@@ -75,7 +83,7 @@ workflow:
 
   - name: Normalize Observation Details
     id: normalize_obs_details
-    task: normalize_column
+    task: normalize_json_column
     partial:
       df: ${{ workflow.convert_to_user_timezone.return }}
       column: "observation_details"
@@ -87,7 +95,8 @@ workflow:
     partial:
       df: ${{ workflow.normalize_obs_details.return }}
       prefix: "observation_details__"
-      
+      duplicate_strategy: "suffix"
+
   - name: Extract Date
     id: extract_date
     task: extract_column_as_type
@@ -104,9 +113,6 @@ workflow:
       df: ${{ workflow.extract_date.return }}
       column: "weather_station"
 
-  - name: Set Groupers
-    id: groupers
-    task: set_groupers
 
   - name: Add temporal index
     id: df_with_temporal_index
@@ -242,7 +248,7 @@ workflow:
     task: merge_widget_views
     partial:
       widgets: ${{ workflow.temperature_chart_widget.return }}
-
+      
   - name: Create A Weather Dashboard
     id: weather_dashboard
     task: gather_dashboard

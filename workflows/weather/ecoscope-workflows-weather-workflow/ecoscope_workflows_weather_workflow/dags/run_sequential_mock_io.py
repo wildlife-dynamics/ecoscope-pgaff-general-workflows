@@ -14,7 +14,11 @@ import warnings  # 🧪
 from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
 )
+from ecoscope_workflows_core.tasks.filter import (
+    get_timezone_from_time_range as get_timezone_from_time_range,
+)
 from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
+from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
 from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
 from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
 
@@ -22,10 +26,6 @@ get_subjectgroup_observations = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_subjectgroup_observations",  # 🧪
 )  # 🧪
-from ecoscope_workflows_core.tasks.filter import (
-    get_timezone_from_time_range as get_timezone_from_time_range,
-)
-from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
 from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
@@ -59,7 +59,7 @@ from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_line_chart as draw_line_chart,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
-    normalize_column as normalize_column,
+    normalize_json_column as normalize_json_column,
 )
 
 from ..params import Params
@@ -90,6 +90,24 @@ def main(params: Params):
         .call()
     )
 
+    get_timezone = (
+        get_timezone_from_time_range.validate()
+        .set_task_instance_id("get_timezone")
+        .handle_errors()
+        .with_tracing()
+        .partial(time_range=time_range, **(params_dict.get("get_timezone") or {}))
+        .call()
+    )
+
+    groupers = (
+        set_groupers.validate()
+        .set_task_instance_id("groupers")
+        .handle_errors()
+        .with_tracing()
+        .partial(**(params_dict.get("groupers") or {}))
+        .call()
+    )
+
     er_client_name = (
         set_er_connection.validate()
         .set_task_instance_id("er_client_name")
@@ -110,6 +128,7 @@ def main(params: Params):
             raise_on_empty=True,
             include_details=True,
             include_subjectsource_details=True,
+            subject_group_name="Subjects",
             **(params_dict.get("subject_obs") or {}),
         )
         .call()
@@ -123,6 +142,7 @@ def main(params: Params):
         .partial(
             df=subject_obs,
             prefix="extra__",
+            duplicate_strategy="suffix",
             **(params_dict.get("drop_extra_prefix") or {}),
         )
         .call()
@@ -153,15 +173,6 @@ def main(params: Params):
         .call()
     )
 
-    get_timezone = (
-        get_timezone_from_time_range.validate()
-        .set_task_instance_id("get_timezone")
-        .handle_errors()
-        .with_tracing()
-        .partial(time_range=time_range, **(params_dict.get("get_timezone") or {}))
-        .call()
-    )
-
     convert_to_user_timezone = (
         convert_values_to_timezone.validate()
         .set_task_instance_id("convert_to_user_timezone")
@@ -177,7 +188,7 @@ def main(params: Params):
     )
 
     normalize_obs_details = (
-        normalize_column.validate()
+        normalize_json_column.validate()
         .set_task_instance_id("normalize_obs_details")
         .handle_errors()
         .with_tracing()
@@ -198,6 +209,7 @@ def main(params: Params):
         .partial(
             df=normalize_obs_details,
             prefix="observation_details__",
+            duplicate_strategy="suffix",
             **(params_dict.get("drop_obs_details_prefix") or {}),
         )
         .call()
@@ -228,15 +240,6 @@ def main(params: Params):
             column="weather_station",
             **(params_dict.get("filtered_weather_station") or {}),
         )
-        .call()
-    )
-
-    groupers = (
-        set_groupers.validate()
-        .set_task_instance_id("groupers")
-        .handle_errors()
-        .with_tracing()
-        .partial(**(params_dict.get("groupers") or {}))
         .call()
     )
 

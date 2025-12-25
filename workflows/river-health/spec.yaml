@@ -1,0 +1,218 @@
+id: river_health
+requirements:
+  - name: ecoscope-workflows-core
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows/release/artifacts/
+  - name: ecoscope-workflows-ext-ecoscope
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows/release/artifacts/
+  - name: ecoscope-workflows-ext-custom
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
+rjsf-overrides:
+  $defs:
+    ValueGrouper.oneOf: [
+      {"const": "weather_station", "title": "Weather Station"},
+    ]
+
+
+workflow:
+  - name: Set Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+
+  - name: Time Range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%d %b %Y %H:%M:%S %Z"
+  
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
+
+  - name: Set Groupers
+    id: groupers
+    task: set_groupers
+
+  - name: Select EarthRanger Data Source
+    id: er_client_name
+    task: set_er_connection
+    
+  - name: Get Subject Group Observations from EarthRanger
+    id: subject_obs_stevens
+    task: get_subjectgroup_observations
+    partial:
+      client: ${{ workflow.er_client_name.return }}
+      time_range: ${{ workflow.time_range.return }}
+      raise_on_empty: true
+      include_details: true
+      include_subjectsource_details: true
+      subject_group_name: "Stevens Connect"
+      
+  - name: Remove Extra Column Prefix
+    id: drop_extra_prefix_stevens
+    task: drop_column_prefix
+    partial:
+      df: ${{ workflow.subject_obs_stevens.return }}
+      prefix: "extra__"
+      duplicate_strategy: "suffix"
+
+  - name: Preprocess Columns
+    id: process_columns_stevens
+    task: map_columns
+    partial:
+      df: ${{ workflow.drop_extra_prefix_stevens.return }}
+      drop_columns: []
+      retain_columns: ["id", "subject_id", "created_at", "recorded_at", "source", "device_status_properties", "observation_details", "geometry", "subject__name"]
+      rename_columns:
+        subject__name: "sensor"
+
+  - name: "Convert to timezone"
+    id: convert_to_user_timezone_stevens
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.process_columns_stevens.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns: ["time"]
+
+  - name: Normalize Observation Details
+    id: normalize_obs_details_stevens
+    task: normalize_json_column
+    partial:
+      df: ${{ workflow.convert_to_user_timezone_stevens.return }}
+      column: "observation_details"
+      skip_if_not_exists: false
+
+  - name: Remove Column Prefix Observation Details
+    id: drop_obs_details_prefix_stevens
+    task: drop_column_prefix
+    partial:
+      df: ${{ workflow.normalize_obs_details_stevens.return }}
+      prefix: "observation_details__"
+      duplicate_strategy: "suffix"
+
+  - name: Extract Date
+    id: extract_date_stevens
+    task: extract_column_as_type
+    partial:
+      df: ${{ workflow.drop_obs_details_prefix_stevens.return }}
+      column_name: recorded_at
+      output_type: date
+      output_column_name: date
+
+  - name: Persist Observations from Stevens Connect
+    id: persist_stevens_observations
+    task: persist_df_wrapper
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      df: ${{ workflow.extract_date_stevens.return }}
+
+  - name: Extract River Values
+    id: extract_river_values
+    task: apply_sql_query
+    partial:
+      df: ${{ workflow.extract_date_stevens.return }}
+      columns: ["id", "DO", "Depth m", "date", "sensor"]
+      query: "SELECT CASE WHEN INSTR(\"DO\", CHAR(32)) > 0 THEN CAST(SUBSTR(\"DO\", 1, INSTR(\"DO\", CHAR(32)) - 1) AS REAL) ELSE NULL END AS do_value, CASE WHEN INSTR(\"Depth m\", CHAR(32)) > 0 THEN CAST(SUBSTR(\"Depth m\", 1, INSTR(\"Depth m\", CHAR(32)) - 1) AS REAL) ELSE NULL END AS depth_m_value, date, id FROM df WHERE sensor = \"Mara River Purungat Bridge - Sensor M 20\""
+
+  - name: Calculate Daily River Summary
+    id: daily_river
+    task: summarize_df
+    partial:
+      groupby_cols:
+        - date
+      summary_params:
+        - display_name: Depth (m)
+          aggregator: mean
+          column: depth_m_value
+        - display_name: Dissolved Oxygen (mg/L)
+          aggregator: mean
+          column: do_value
+      reset_index: true
+      df: ${{ workflow.extract_river_values.return }}
+
+  - name: Persist Daily Summary from Stevens Connect
+    id: persist_daily_summary_stevens
+    task: persist_df_wrapper
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      df: ${{ workflow.daily_river.return }}
+
+  - name: Draw River Depth Chart
+    id: depth_chart
+    task: draw_line_chart
+    partial:
+      x_column: date
+      y_column: Depth (m)
+      line_kwargs:
+        shape: "spline"
+      layout_kwargs:
+        xaxis:
+          title: "Date"
+        yaxis:
+          title: "Depth (m)"
+        legend_title: "Weather Station"
+        hovermode: "closest"
+      dataframe: ${{ workflow.daily_river.return }}
+      category_column: ""
+      
+  - name: Persist Depth Chart as Text
+    id: persist_depth
+    task: persist_text
+    partial:
+      root_path:  ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.depth_chart.return }}
+      
+  - name: Create Depth Widget
+    id: depth_chart_widget
+    task: create_plot_widget_single_view
+    partial:
+      title: "Daily River Flow"
+      data: ${{ workflow.persist_depth.return }}
+      
+  - name: Draw DO Chart
+    id: do_chart
+    task: draw_line_chart
+    partial:
+      x_column: date
+      y_column: Dissolved Oxygen (mg/L)
+        shape: "spline"
+      layout_kwargs:
+        xaxis:
+          title: "Date"
+        yaxis:
+          title: "Average Daily Dissolved Oxygen (mg/L)"
+        legend_title: "Weather Station"
+        hovermode: "closest"
+      dataframe: ${{ workflow.daily_river.return }}
+      category_column: ""
+
+  - name: Persist DO Chart as Text
+    id: persist_do
+    task: persist_text
+    partial:
+      root_path:  ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.do_chart.return }}
+
+  - name: Create DO Widget
+    id: do_chart_widget
+    task: create_plot_widget_single_view
+    partial:
+      title: "Daily Dissolved Oxygen"
+      data: ${{ workflow.persist_do.return }}
+      
+  - name: Create A Weather Dashboard
+    id: weather_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return}}
+      widgets:
+        # - ${{ workflow.grouped_precipitation_widget.return }}
+        # - ${{ workflow.grouped_temperature_widget.return }}
+        - ${{ workflow.depth_chart_widget.return }}
+        - ${{ workflow.do_chart_widget.return }}
+      time_range: ${{ workflow.time_range.return}}
+      groupers: ${{ workflow.groupers.return }}

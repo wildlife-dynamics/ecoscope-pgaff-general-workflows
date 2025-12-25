@@ -4,7 +4,7 @@
 # ruff: noqa: E402
 
 # %% [markdown]
-# # Climate
+# # Weather
 # TODO: top level description
 
 # %% [markdown]
@@ -57,7 +57,7 @@ from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_line_chart as draw_line_chart,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
-    normalize_column as normalize_column,
+    normalize_json_column as normalize_json_column,
 )
 
 # %% [markdown]
@@ -111,6 +111,50 @@ time_range = (
 
 
 # %% [markdown]
+# ## Extract Timezone Selection
+
+# %%
+# parameters
+
+get_timezone_params = dict()
+
+# %%
+# call the task
+
+
+get_timezone = (
+    get_timezone_from_time_range.set_task_instance_id("get_timezone")
+    .handle_errors()
+    .with_tracing()
+    .partial(time_range=time_range, **get_timezone_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Set Groupers
+
+# %%
+# parameters
+
+groupers_params = dict(
+    groupers=...,
+)
+
+# %%
+# call the task
+
+
+groupers = (
+    set_groupers.set_task_instance_id("groupers")
+    .handle_errors()
+    .with_tracing()
+    .partial(**groupers_params)
+    .call()
+)
+
+
+# %% [markdown]
 # ## Select EarthRanger Data Source
 
 # %%
@@ -139,9 +183,7 @@ er_client_name = (
 # %%
 # parameters
 
-subject_obs_params = dict(
-    subject_group_name=...,
-)
+subject_obs_params = dict()
 
 # %%
 # call the task
@@ -157,6 +199,7 @@ subject_obs = (
         raise_on_empty=True,
         include_details=True,
         include_subjectsource_details=True,
+        subject_group_name="Subjects",
         **subject_obs_params,
     )
     .call()
@@ -179,7 +222,12 @@ drop_extra_prefix = (
     drop_column_prefix.set_task_instance_id("drop_extra_prefix")
     .handle_errors()
     .with_tracing()
-    .partial(df=subject_obs, prefix="extra__", **drop_extra_prefix_params)
+    .partial(
+        df=subject_obs,
+        prefix="extra__",
+        duplicate_strategy="suffix",
+        **drop_extra_prefix_params,
+    )
     .call()
 )
 
@@ -217,27 +265,6 @@ process_columns = (
         rename_columns={"subject__name": "weather_station"},
         **process_columns_params,
     )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Extract Timezone Selection
-
-# %%
-# parameters
-
-get_timezone_params = dict()
-
-# %%
-# call the task
-
-
-get_timezone = (
-    get_timezone_from_time_range.set_task_instance_id("get_timezone")
-    .handle_errors()
-    .with_tracing()
-    .partial(time_range=time_range, **get_timezone_params)
     .call()
 )
 
@@ -281,7 +308,7 @@ normalize_obs_details_params = dict()
 
 
 normalize_obs_details = (
-    normalize_column.set_task_instance_id("normalize_obs_details")
+    normalize_json_column.set_task_instance_id("normalize_obs_details")
     .handle_errors()
     .with_tracing()
     .partial(
@@ -313,6 +340,7 @@ drop_obs_details_prefix = (
     .partial(
         df=normalize_obs_details,
         prefix="observation_details__",
+        duplicate_strategy="suffix",
         **drop_obs_details_prefix_params,
     )
     .call()
@@ -367,29 +395,6 @@ filtered_weather_station = (
     .partial(
         df=extract_date, column="weather_station", **filtered_weather_station_params
     )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Set Groupers
-
-# %%
-# parameters
-
-groupers_params = dict(
-    groupers=...,
-)
-
-# %%
-# call the task
-
-
-groupers = (
-    set_groupers.set_task_instance_id("groupers")
-    .handle_errors()
-    .with_tracing()
-    .partial(**groupers_params)
     .call()
 )
 
