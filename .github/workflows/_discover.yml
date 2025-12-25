@@ -26,6 +26,7 @@ jobs:
           echo "workflows=$workflows" >> $GITHUB_OUTPUT
           echo "Found workflows: $workflows"
 
+  #todo remove
   discover-workflow-test-pairs:
     runs-on: ubuntu-latest
     outputs:
