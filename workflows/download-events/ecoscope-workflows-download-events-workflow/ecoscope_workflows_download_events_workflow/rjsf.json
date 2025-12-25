@@ -115,6 +115,26 @@
       "type": "object",
       "title": "Download Attachments"
     },
+    "drop_event_details_prefix": {
+      "additionalProperties": false,
+      "properties": {
+        "duplicate_strategy": {
+          "default": "suffix",
+          "enum": [
+            "suffix",
+            "error",
+            "keep_original"
+          ],
+          "title": "Duplicate Strategy",
+          "type": "string",
+          "description": "Strategy for handling duplicate column names after removing prefix. 'suffix': append _1, _2, etc. to duplicates; 'error': raise ValueError if duplicates would occur; 'keep_original': keep original name with prefix if duplicate would occur.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Remove Column Prefix Event Details"
+    },
     "filter_events": {
       "additionalProperties": false,
       "properties": {
@@ -201,7 +221,23 @@
           "default": "",
           "title": "Query",
           "type": "string",
-          "description": "SQL query string to apply to the DataFrame. Use 'df' as the table name in the query.",
+          "description": "SQL query string to apply to the DataFrame. Use 'df' as the table name in the query."
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Columns",
+          "description": "Optional list of column names to include in the SQL query context. If specified, only these columns will be available in the 'df' table for querying. Use this to exclude columns with unsupported data types (list, dict) that cannot be stored in SQLite. If not specified, all columns are included.",
           "ecoscope:advanced": true
         }
       },
@@ -656,6 +692,12 @@
         "rename_columns"
       ]
     },
+    "sql_query": {
+      "ui:order": [
+        "query",
+        "columns"
+      ]
+    },
     "persist_events": {
       "ui:order": [
         "filename",
@@ -669,6 +711,7 @@
       "er_client_name",
       "get_event_data",
       "download_attachments",
+      "drop_event_details_prefix",
       "filter_events",
       "customize_columns",
       "sql_query",

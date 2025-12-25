@@ -74,7 +74,7 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     apply_reloc_coord_filter as apply_reloc_coord_filter,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
-    normalize_column as normalize_column,
+    normalize_json_column as normalize_json_column,
 )
 
 # %% [markdown]
@@ -392,7 +392,7 @@ normalize_event_details_params = dict()
 
 
 normalize_event_details = (
-    normalize_column.set_task_instance_id("normalize_event_details")
+    normalize_json_column.set_task_instance_id("normalize_event_details")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -418,7 +418,9 @@ normalize_event_details = (
 # %%
 # parameters
 
-drop_event_details_prefix_params = dict()
+drop_event_details_prefix_params = dict(
+    duplicate_strategy=...,
+)
 
 # %%
 # call the task
@@ -520,6 +522,7 @@ customize_columns = (
 
 sql_query_params = dict(
     query=...,
+    columns=...,
 )
 
 # %%

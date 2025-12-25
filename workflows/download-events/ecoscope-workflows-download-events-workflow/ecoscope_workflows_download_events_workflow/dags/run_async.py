@@ -65,7 +65,7 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     apply_reloc_coord_filter as apply_reloc_coord_filter,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
-    normalize_column as normalize_column,
+    normalize_json_column as normalize_json_column,
 )
 
 from ..params import Params
@@ -303,7 +303,7 @@ def main(params: Params):
             method="call",
         ),
         "normalize_event_details": Node(
-            async_task=normalize_column.validate()
+            async_task=normalize_json_column.validate()
             .set_task_instance_id("normalize_event_details")
             .handle_errors()
             .with_tracing()

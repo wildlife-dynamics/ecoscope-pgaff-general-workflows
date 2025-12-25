@@ -48,6 +48,23 @@ class DownloadAttachments(BaseModel):
     )
 
 
+class DuplicateStrategy(str, Enum):
+    suffix = "suffix"
+    error = "error"
+    keep_original = "keep_original"
+
+
+class DropEventDetailsPrefix(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    duplicate_strategy: Optional[DuplicateStrategy] = Field(
+        "suffix",
+        description="Strategy for handling duplicate column names after removing prefix. 'suffix': append _1, _2, etc. to duplicates; 'error': raise ValueError if duplicates would occur; 'keep_original': keep original name with prefix if duplicate would occur.",
+        title="Duplicate Strategy",
+    )
+
+
 class CustomizeColumns(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -73,6 +90,11 @@ class SqlQuery(BaseModel):
         "",
         description="SQL query string to apply to the DataFrame. Use 'df' as the table name in the query.",
         title="Query",
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description="Optional list of column names to include in the SQL query context. If specified, only these columns will be available in the 'df' table for querying. Use this to exclude columns with unsupported data types (list, dict) that cannot be stored in SQLite. If not specified, all columns are included.",
+        title="Columns",
     )
 
 
@@ -361,6 +383,9 @@ class FormData(BaseModel):
     get_event_data: Optional[GetEventData] = Field(None, title="Get Event Data")
     download_attachments: Optional[DownloadAttachments] = Field(
         None, title="Download Attachments"
+    )
+    drop_event_details_prefix: Optional[DropEventDetailsPrefix] = Field(
+        None, title="Remove Column Prefix Event Details"
     )
     filter_events: Optional[FilterEvents] = Field(
         None, title="Filter Event Relocations"
