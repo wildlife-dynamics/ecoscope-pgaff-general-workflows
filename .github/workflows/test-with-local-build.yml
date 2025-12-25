@@ -25,11 +25,11 @@ jobs:
     needs: [build-release, discover]
     if: |
       contains(github.event.pull_request.labels.*.name, 'test:local') &&
-      needs.discover.outputs.pairs != '[]'
+      needs.discover.outputs.workflows != '[]'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include: ${{ fromJson(needs.discover.outputs.pairs) }}
+        workflow: ${{ fromJson(needs.discover.outputs.workflows) }}
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
         run: |
           echo "${{ secrets.EE_KEY_JSON }}" > gee-key.json
 
-      - name: Run a workflow test case
+      - name: Run all workflow test cases
         shell: bash
         # Add your GitHub secrets here
         # They will be available to the workflow
@@ -64,4 +64,4 @@ jobs:
           ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__MEP_DEV__USERNAME: ${{ secrets.ER_USERNAME }}
         run: |
           chmod +x dev/pytest-cli.sh || true
-          pixi run --manifest-path pixi.toml -e default bash dev/pytest-cli.sh ${{ matrix.workflow }} ${{ matrix.case }}
+          pixi run --manifest-path pixi.toml -e default bash dev/pytest-cli.sh ${{ matrix.workflow }} --all
