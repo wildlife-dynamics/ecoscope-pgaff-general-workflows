@@ -26,11 +26,18 @@ get_subjectgroup_observations = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_subjectgroup_observations",  # 🧪
 )  # 🧪
+from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
     create_plot_widget_single_view as create_plot_widget_single_view,
 )
 from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope_workflows_core.tasks.results import (
+    merge_widget_views as merge_widget_views,
+)
+from ecoscope_workflows_core.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
+)
 from ecoscope_workflows_core.tasks.transformation import (
     convert_values_to_timezone as convert_values_to_timezone,
 )
@@ -223,6 +230,33 @@ def main(params: Params):
         .call()
     )
 
+    df_with_temporal_index = (
+        add_temporal_index.validate()
+        .set_task_instance_id("df_with_temporal_index")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            df=extract_date_stevens,
+            time_col="recorded_at",
+            groupers=groupers,
+            **(params_dict.get("df_with_temporal_index") or {}),
+        )
+        .call()
+    )
+
+    split_river_groups = (
+        split_groups.validate()
+        .set_task_instance_id("split_river_groups")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            df=df_with_temporal_index,
+            groupers=groupers,
+            **(params_dict.get("split_river_groups") or {}),
+        )
+        .call()
+    )
+
     persist_stevens_observations = (
         persist_df_wrapper.validate()
         .set_task_instance_id("persist_stevens_observations")
@@ -230,10 +264,9 @@ def main(params: Params):
         .with_tracing()
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            df=extract_date_stevens,
             **(params_dict.get("persist_stevens_observations") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=split_river_groups)
     )
 
     extract_river_values = (
@@ -242,12 +275,11 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            df=extract_date_stevens,
             columns=["id", "DO", "Depth m", "date", "sensor"],
             query='SELECT CASE WHEN INSTR("DO", CHAR(32)) > 0 THEN CAST(SUBSTR("DO", 1, INSTR("DO", CHAR(32)) - 1) AS REAL) ELSE NULL END AS do_value, CASE WHEN INSTR("Depth m", CHAR(32)) > 0 THEN CAST(SUBSTR("Depth m", 1, INSTR("Depth m", CHAR(32)) - 1) AS REAL) ELSE NULL END AS depth_m_value, date, id FROM df WHERE sensor = "Mara River Purungat Bridge - Sensor M 20"',
             **(params_dict.get("extract_river_values") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=split_river_groups)
     )
 
     daily_river = (
@@ -270,10 +302,9 @@ def main(params: Params):
                 },
             ],
             reset_index=True,
-            df=extract_river_values,
             **(params_dict.get("daily_river") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=extract_river_values)
     )
 
     persist_daily_summary_stevens = (
@@ -283,10 +314,9 @@ def main(params: Params):
         .with_tracing()
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            df=daily_river,
             **(params_dict.get("persist_daily_summary_stevens") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=daily_river)
     )
 
     depth_chart = (
@@ -304,11 +334,10 @@ def main(params: Params):
                 "legend_title": "Weather Station",
                 "hovermode": "closest",
             },
-            dataframe=daily_river,
             category_column="",
             **(params_dict.get("depth_chart") or {}),
         )
-        .call()
+        .mapvalues(argnames=["dataframe"], argvalues=daily_river)
     )
 
     persist_depth = (
@@ -318,10 +347,9 @@ def main(params: Params):
         .with_tracing()
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            text=depth_chart,
             **(params_dict.get("persist_depth") or {}),
         )
-        .call()
+        .mapvalues(argnames=["text"], argvalues=depth_chart)
     )
 
     depth_chart_widget = (
@@ -330,9 +358,19 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            title="Daily River Flow",
-            data=persist_depth,
-            **(params_dict.get("depth_chart_widget") or {}),
+            title="Daily River Flow", **(params_dict.get("depth_chart_widget") or {})
+        )
+        .map(argnames=["view", "data"], argvalues=persist_depth)
+    )
+
+    grouped_depth_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("grouped_depth_widget")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            widgets=depth_chart_widget,
+            **(params_dict.get("grouped_depth_widget") or {}),
         )
         .call()
     )
@@ -352,11 +390,10 @@ def main(params: Params):
                 "legend_title": "Weather Station",
                 "hovermode": "closest",
             },
-            dataframe=daily_river,
             category_column="",
             **(params_dict.get("do_chart") or {}),
         )
-        .call()
+        .mapvalues(argnames=["dataframe"], argvalues=daily_river)
     )
 
     persist_do = (
@@ -366,10 +403,9 @@ def main(params: Params):
         .with_tracing()
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            text=do_chart,
             **(params_dict.get("persist_do") or {}),
         )
-        .call()
+        .mapvalues(argnames=["text"], argvalues=do_chart)
     )
 
     do_chart_widget = (
@@ -378,9 +414,18 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            title="Daily Dissolved Oxygen",
-            data=persist_do,
-            **(params_dict.get("do_chart_widget") or {}),
+            title="Daily Dissolved Oxygen", **(params_dict.get("do_chart_widget") or {})
+        )
+        .map(argnames=["view", "data"], argvalues=persist_do)
+    )
+
+    grouped_do_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("grouped_do_widget")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            widgets=do_chart_widget, **(params_dict.get("grouped_do_widget") or {})
         )
         .call()
     )
@@ -392,7 +437,7 @@ def main(params: Params):
         .with_tracing()
         .partial(
             details=workflow_details,
-            widgets=[depth_chart_widget, do_chart_widget],
+            widgets=[grouped_depth_widget, grouped_do_widget],
             time_range=time_range,
             groupers=groupers,
             **(params_dict.get("weather_dashboard") or {}),

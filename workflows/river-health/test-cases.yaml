@@ -1,4 +1,4 @@
-base:
+month-grouper:
   name: Base Test Case
   mock_io: false
   params:
@@ -9,7 +9,8 @@ base:
       data_source:
         name: "gmmf"
     time_range:
-      since: "2025-12-20T00:00:00Z"
+      since: "2025-11-20T00:00:00Z"
       until: "2025-12-25T23:59:59Z"
     groupers:
-      groupers: []
+      groupers: 
+        - "%B"

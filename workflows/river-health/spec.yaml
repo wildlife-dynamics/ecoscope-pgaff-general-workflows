@@ -33,7 +33,7 @@ workflow:
     partial:
       time_range: ${{ workflow.time_range.return }}
 
-  - name: Set Groupers
+  - name: Set Groupers for Analysis
     id: groupers
     task: set_groupers
 
@@ -103,20 +103,39 @@ workflow:
       output_type: date
       output_column_name: date
 
+  - name: Add temporal index
+    id: df_with_temporal_index
+    task: add_temporal_index
+    partial:
+      df: ${{ workflow.extract_date_stevens.return }}
+      time_col: recorded_at
+      groupers: ${{ workflow.groupers.return }}
+
+  - name: Split by Group
+    id: split_river_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.df_with_temporal_index.return }}
+      groupers: ${{ workflow.groupers.return }}
+
   - name: Persist Observations from Stevens Connect
     id: persist_stevens_observations
     task: persist_df_wrapper
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.extract_date_stevens.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_river_groups.return }}
 
   - name: Extract River Values
     id: extract_river_values
     task: apply_sql_query
     partial:
-      df: ${{ workflow.extract_date_stevens.return }}
       columns: ["id", "DO", "Depth m", "date", "sensor"]
       query: "SELECT CASE WHEN INSTR(\"DO\", CHAR(32)) > 0 THEN CAST(SUBSTR(\"DO\", 1, INSTR(\"DO\", CHAR(32)) - 1) AS REAL) ELSE NULL END AS do_value, CASE WHEN INSTR(\"Depth m\", CHAR(32)) > 0 THEN CAST(SUBSTR(\"Depth m\", 1, INSTR(\"Depth m\", CHAR(32)) - 1) AS REAL) ELSE NULL END AS depth_m_value, date, id FROM df WHERE sensor = \"Mara River Purungat Bridge - Sensor M 20\""
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_river_groups.return }}
 
   - name: Calculate Daily River Summary
     id: daily_river
@@ -132,14 +151,18 @@ workflow:
           aggregator: mean
           column: do_value
       reset_index: true
-      df: ${{ workflow.extract_river_values.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.extract_river_values.return }}
 
   - name: Persist Daily Summary from Stevens Connect
     id: persist_daily_summary_stevens
     task: persist_df_wrapper
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      df: ${{ workflow.daily_river.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.daily_river.return }}
 
   - name: Draw River Depth Chart
     id: depth_chart
@@ -156,22 +179,34 @@ workflow:
           title: "Depth (m)"
         legend_title: "Weather Station"
         hovermode: "closest"
-      dataframe: ${{ workflow.daily_river.return }}
       category_column: ""
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.daily_river.return }}
       
   - name: Persist Depth Chart as Text
     id: persist_depth
     task: persist_text
     partial:
       root_path:  ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.depth_chart.return }}
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.depth_chart.return }}
       
   - name: Create Depth Widget
     id: depth_chart_widget
     task: create_plot_widget_single_view
     partial:
       title: "Daily River Flow"
-      data: ${{ workflow.persist_depth.return }}
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.persist_depth.return }}
+
+  - name: Merge Depth Widget Views
+    id: grouped_depth_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.depth_chart_widget.return }}
       
   - name: Draw DO Chart
     id: do_chart
@@ -188,22 +223,33 @@ workflow:
           title: "Average Daily Dissolved Oxygen (mg/L)"
         legend_title: "Weather Station"
         hovermode: "closest"
-      dataframe: ${{ workflow.daily_river.return }}
       category_column: ""
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.daily_river.return }}
 
   - name: Persist DO Chart as Text
     id: persist_do
     task: persist_text
     partial:
       root_path:  ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.do_chart.return }}
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.do_chart.return }}
 
   - name: Create DO Widget
     id: do_chart_widget
     task: create_plot_widget_single_view
     partial:
       title: "Daily Dissolved Oxygen"
-      data: ${{ workflow.persist_do.return }}
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.persist_do.return }}
+  - name: Merge DO Widget Views
+    id: grouped_do_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.do_chart_widget.return }}
       
   - name: Create A Weather Dashboard
     id: weather_dashboard
@@ -211,7 +257,7 @@ workflow:
     partial:
       details: ${{ workflow.workflow_details.return}}
       widgets:
-        - ${{ workflow.depth_chart_widget.return }}
-        - ${{ workflow.do_chart_widget.return }}
+        - ${{ workflow.grouped_depth_widget.return }}
+        - ${{ workflow.grouped_do_widget.return }}
       time_range: ${{ workflow.time_range.return}}
       groupers: ${{ workflow.groupers.return }}

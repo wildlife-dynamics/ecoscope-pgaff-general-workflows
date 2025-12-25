@@ -27,11 +27,18 @@ get_subjectgroup_observations = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_subjectgroup_observations",  # 🧪
 )  # 🧪
+from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
     create_plot_widget_single_view as create_plot_widget_single_view,
 )
 from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope_workflows_core.tasks.results import (
+    merge_widget_views as merge_widget_views,
+)
+from ecoscope_workflows_core.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
+)
 from ecoscope_workflows_core.tasks.transformation import (
     convert_values_to_timezone as convert_values_to_timezone,
 )
@@ -77,20 +84,24 @@ def main(params: Params):
         "normalize_obs_details_stevens": ["convert_to_user_timezone_stevens"],
         "drop_obs_details_prefix_stevens": ["normalize_obs_details_stevens"],
         "extract_date_stevens": ["drop_obs_details_prefix_stevens"],
-        "persist_stevens_observations": ["extract_date_stevens"],
-        "extract_river_values": ["extract_date_stevens"],
+        "df_with_temporal_index": ["extract_date_stevens", "groupers"],
+        "split_river_groups": ["df_with_temporal_index", "groupers"],
+        "persist_stevens_observations": ["split_river_groups"],
+        "extract_river_values": ["split_river_groups"],
         "daily_river": ["extract_river_values"],
         "persist_daily_summary_stevens": ["daily_river"],
         "depth_chart": ["daily_river"],
         "persist_depth": ["depth_chart"],
         "depth_chart_widget": ["persist_depth"],
+        "grouped_depth_widget": ["depth_chart_widget"],
         "do_chart": ["daily_river"],
         "persist_do": ["do_chart"],
         "do_chart_widget": ["persist_do"],
+        "grouped_do_widget": ["do_chart_widget"],
         "weather_dashboard": [
             "workflow_details",
-            "depth_chart_widget",
-            "do_chart_widget",
+            "grouped_depth_widget",
+            "grouped_do_widget",
             "time_range",
             "groupers",
         ],
@@ -261,6 +272,33 @@ def main(params: Params):
             | (params_dict.get("extract_date_stevens") or {}),
             method="call",
         ),
+        "df_with_temporal_index": Node(
+            async_task=add_temporal_index.validate()
+            .set_task_instance_id("df_with_temporal_index")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("extract_date_stevens"),
+                "time_col": "recorded_at",
+                "groupers": DependsOn("groupers"),
+            }
+            | (params_dict.get("df_with_temporal_index") or {}),
+            method="call",
+        ),
+        "split_river_groups": Node(
+            async_task=split_groups.validate()
+            .set_task_instance_id("split_river_groups")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("df_with_temporal_index"),
+                "groupers": DependsOn("groupers"),
+            }
+            | (params_dict.get("split_river_groups") or {}),
+            method="call",
+        ),
         "persist_stevens_observations": Node(
             async_task=persist_df_wrapper.validate()
             .set_task_instance_id("persist_stevens_observations")
@@ -269,10 +307,13 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "df": DependsOn("extract_date_stevens"),
             }
             | (params_dict.get("persist_stevens_observations") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_river_groups"),
+            },
         ),
         "extract_river_values": Node(
             async_task=apply_sql_query.validate()
@@ -281,12 +322,15 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("extract_date_stevens"),
                 "columns": ["id", "DO", "Depth m", "date", "sensor"],
                 "query": 'SELECT CASE WHEN INSTR("DO", CHAR(32)) > 0 THEN CAST(SUBSTR("DO", 1, INSTR("DO", CHAR(32)) - 1) AS REAL) ELSE NULL END AS do_value, CASE WHEN INSTR("Depth m", CHAR(32)) > 0 THEN CAST(SUBSTR("Depth m", 1, INSTR("Depth m", CHAR(32)) - 1) AS REAL) ELSE NULL END AS depth_m_value, date, id FROM df WHERE sensor = "Mara River Purungat Bridge - Sensor M 20"',
             }
             | (params_dict.get("extract_river_values") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_river_groups"),
+            },
         ),
         "daily_river": Node(
             async_task=summarize_df.validate()
@@ -309,10 +353,13 @@ def main(params: Params):
                     },
                 ],
                 "reset_index": True,
-                "df": DependsOn("extract_river_values"),
             }
             | (params_dict.get("daily_river") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("extract_river_values"),
+            },
         ),
         "persist_daily_summary_stevens": Node(
             async_task=persist_df_wrapper.validate()
@@ -322,10 +369,13 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "df": DependsOn("daily_river"),
             }
             | (params_dict.get("persist_daily_summary_stevens") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("daily_river"),
+            },
         ),
         "depth_chart": Node(
             async_task=draw_line_chart.validate()
@@ -343,11 +393,14 @@ def main(params: Params):
                     "legend_title": "Weather Station",
                     "hovermode": "closest",
                 },
-                "dataframe": DependsOn("daily_river"),
                 "category_column": "",
             }
             | (params_dict.get("depth_chart") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["dataframe"],
+                "argvalues": DependsOn("daily_river"),
+            },
         ),
         "persist_depth": Node(
             async_task=persist_text.validate()
@@ -357,10 +410,13 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "text": DependsOn("depth_chart"),
             }
             | (params_dict.get("persist_depth") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["text"],
+                "argvalues": DependsOn("depth_chart"),
+            },
         ),
         "depth_chart_widget": Node(
             async_task=create_plot_widget_single_view.validate()
@@ -370,9 +426,24 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "title": "Daily River Flow",
-                "data": DependsOn("persist_depth"),
             }
             | (params_dict.get("depth_chart_widget") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("persist_depth"),
+            },
+        ),
+        "grouped_depth_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("grouped_depth_widget")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("depth_chart_widget"),
+            }
+            | (params_dict.get("grouped_depth_widget") or {}),
             method="call",
         ),
         "do_chart": Node(
@@ -391,11 +462,14 @@ def main(params: Params):
                     "legend_title": "Weather Station",
                     "hovermode": "closest",
                 },
-                "dataframe": DependsOn("daily_river"),
                 "category_column": "",
             }
             | (params_dict.get("do_chart") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["dataframe"],
+                "argvalues": DependsOn("daily_river"),
+            },
         ),
         "persist_do": Node(
             async_task=persist_text.validate()
@@ -405,10 +479,13 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "text": DependsOn("do_chart"),
             }
             | (params_dict.get("persist_do") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["text"],
+                "argvalues": DependsOn("do_chart"),
+            },
         ),
         "do_chart_widget": Node(
             async_task=create_plot_widget_single_view.validate()
@@ -418,9 +495,24 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "title": "Daily Dissolved Oxygen",
-                "data": DependsOn("persist_do"),
             }
             | (params_dict.get("do_chart_widget") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("persist_do"),
+            },
+        ),
+        "grouped_do_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("grouped_do_widget")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("do_chart_widget"),
+            }
+            | (params_dict.get("grouped_do_widget") or {}),
             method="call",
         ),
         "weather_dashboard": Node(
@@ -433,8 +525,8 @@ def main(params: Params):
                 "details": DependsOn("workflow_details"),
                 "widgets": DependsOnSequence(
                     [
-                        DependsOn("depth_chart_widget"),
-                        DependsOn("do_chart_widget"),
+                        DependsOn("grouped_depth_widget"),
+                        DependsOn("grouped_do_widget"),
                     ],
                 ),
                 "time_range": DependsOn("time_range"),

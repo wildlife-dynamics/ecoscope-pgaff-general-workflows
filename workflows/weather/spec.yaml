@@ -61,7 +61,6 @@ workflow:
       prefix: "extra__"
       duplicate_strategy: "suffix"
 
-
   - name: Preprocess Columns
     id: process_columns
     task: map_columns
@@ -112,7 +111,6 @@ workflow:
     partial:
       df: ${{ workflow.extract_date.return }}
       column: "weather_station"
-
 
   - name: Add temporal index
     id: df_with_temporal_index
