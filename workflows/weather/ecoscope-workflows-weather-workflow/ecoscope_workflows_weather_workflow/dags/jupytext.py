@@ -405,10 +405,7 @@ filtered_weather_station = (
 # %%
 # parameters
 
-df_with_temporal_index_params = dict(
-    cast_to_datetime=...,
-    format=...,
-)
+df_with_temporal_index_params = dict()
 
 # %%
 # call the task
@@ -422,6 +419,8 @@ df_with_temporal_index = (
         df=filtered_weather_station,
         time_col="recorded_at",
         groupers=groupers,
+        cast_to_datetime=True,
+        format="mixed",
         **df_with_temporal_index_params,
     )
     .call()
@@ -524,7 +523,6 @@ daily_weather = (
 
 persist_daily_summary_params = dict(
     filename=...,
-    filetypes=...,
     sanitize=...,
 )
 
@@ -538,6 +536,7 @@ persist_daily_summary = (
     .with_tracing()
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetypes=["csv"],
         **persist_daily_summary_params,
     )
     .mapvalues(argnames=["df"], argvalues=daily_weather)
@@ -551,7 +550,6 @@ persist_daily_summary = (
 # parameters
 
 precipitation_chart_params = dict(
-    line_kwargs=...,
     widget_id=...,
 )
 
@@ -567,6 +565,7 @@ precipitation_chart = (
         x_column="date",
         y_column="daily_precipitation",
         category_column="weather_station",
+        line_kwargs={"shape": "hvh"},
         layout_kwargs={
             "xaxis": {"title": "Date"},
             "yaxis": {"title": "Precipitation (mm)"},

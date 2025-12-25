@@ -238,6 +238,8 @@ def main(params: Params):
             df=filtered_weather_station,
             time_col="recorded_at",
             groupers=groupers,
+            cast_to_datetime=True,
+            format="mixed",
             **(params_dict.get("df_with_temporal_index") or {}),
         )
         .call()
@@ -300,6 +302,7 @@ def main(params: Params):
         .with_tracing()
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filetypes=["csv"],
             **(params_dict.get("persist_daily_summary") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=daily_weather)
@@ -314,6 +317,7 @@ def main(params: Params):
             x_column="date",
             y_column="daily_precipitation",
             category_column="weather_station",
+            line_kwargs={"shape": "hvh"},
             layout_kwargs={
                 "xaxis": {"title": "Date"},
                 "yaxis": {"title": "Precipitation (mm)"},

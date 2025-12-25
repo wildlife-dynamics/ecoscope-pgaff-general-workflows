@@ -380,10 +380,7 @@ extract_date_stevens = (
 # %%
 # parameters
 
-df_with_temporal_index_params = dict(
-    cast_to_datetime=...,
-    format=...,
-)
+df_with_temporal_index_params = dict()
 
 # %%
 # call the task
@@ -397,6 +394,8 @@ df_with_temporal_index = (
         df=extract_date_stevens,
         time_col="recorded_at",
         groupers=groupers,
+        cast_to_datetime=True,
+        format="mixed",
         **df_with_temporal_index_params,
     )
     .call()
@@ -522,7 +521,6 @@ daily_river = (
 
 persist_daily_summary_stevens_params = dict(
     filename=...,
-    filetypes=...,
     sanitize=...,
 )
 
@@ -536,6 +534,7 @@ persist_daily_summary_stevens = (
     .with_tracing()
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetypes=["csv"],
         **persist_daily_summary_stevens_params,
     )
     .mapvalues(argnames=["df"], argvalues=daily_river)

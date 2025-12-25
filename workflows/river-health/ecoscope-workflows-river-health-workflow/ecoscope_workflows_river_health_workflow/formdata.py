@@ -18,22 +18,6 @@ class WorkflowDetails(BaseModel):
     description: Optional[str] = Field("", title="Workflow Description")
 
 
-class DfWithTemporalIndex(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    cast_to_datetime: Optional[bool] = Field(
-        True,
-        description="Whether to attempt casting `time_col` to datetime.",
-        title="Cast To Datetime",
-    )
-    format: Optional[str] = Field(
-        "mixed",
-        description='            If `cast_to_datetime=True`, the format to pass to `pd.to_datetime`\n            when attempting to cast `time_col` to datetime. Defaults to "mixed".\n            ',
-        title="Format",
-    )
-
-
 class Filetype(str, Enum):
     csv = "csv"
     gpkg = "gpkg"
@@ -67,9 +51,6 @@ class PersistDailySummaryStevens(BaseModel):
         None,
         description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
         title="Filename",
-    )
-    filetypes: Optional[List[Filetype]] = Field(
-        ["csv"], description="The output format", title="Filetypes"
     )
     sanitize: Optional[bool] = Field(
         False,
@@ -141,9 +122,6 @@ class FormData(BaseModel):
     groupers: Optional[Groupers] = Field(None, title="Set Groupers for Analysis")
     er_client_name: Optional[ErClientName] = Field(
         None, title="Select EarthRanger Data Source"
-    )
-    df_with_temporal_index: Optional[DfWithTemporalIndex] = Field(
-        None, title="Add temporal index"
     )
     persist_stevens_observations: Optional[PersistStevensObservations] = Field(
         None, title="Persist Observations from Stevens Connect"

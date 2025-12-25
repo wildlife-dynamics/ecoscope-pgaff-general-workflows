@@ -268,6 +268,8 @@ def main(params: Params):
                 "df": DependsOn("extract_date_stevens"),
                 "time_col": "recorded_at",
                 "groupers": DependsOn("groupers"),
+                "cast_to_datetime": True,
+                "format": "mixed",
             }
             | (params_dict.get("df_with_temporal_index") or {}),
             method="call",
@@ -355,6 +357,7 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filetypes": ["csv"],
             }
             | (params_dict.get("persist_daily_summary_stevens") or {}),
             method="mapvalues",

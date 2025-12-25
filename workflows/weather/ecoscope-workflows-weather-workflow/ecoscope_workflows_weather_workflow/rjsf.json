@@ -97,47 +97,18 @@
       "additionalProperties": false,
       "properties": {
         "values": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
           "default": null,
+          "items": {
+            "type": "string"
+          },
           "title": "Values",
+          "type": "array",
           "description": "The values to keep. If None, no filtering is applied."
         }
       },
       "required": [],
       "type": "object",
       "title": "Select Weather Stations"
-    },
-    "df_with_temporal_index": {
-      "additionalProperties": false,
-      "properties": {
-        "cast_to_datetime": {
-          "default": true,
-          "title": "Cast To Datetime",
-          "type": "boolean",
-          "description": "Whether to attempt casting `time_col` to datetime.",
-          "ecoscope:advanced": true
-        },
-        "format": {
-          "default": "mixed",
-          "title": "Format",
-          "type": "string",
-          "description": "            If `cast_to_datetime=True`, the format to pass to `pd.to_datetime`\n            when attempting to cast `time_col` to datetime. Defaults to \"mixed\".\n            ",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Add temporal index"
     },
     "persist_observations": {
       "additionalProperties": false,
@@ -188,23 +159,6 @@
           "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
           "ecoscope:advanced": true
         },
-        "filetypes": {
-          "default": [
-            "csv"
-          ],
-          "items": {
-            "enum": [
-              "csv",
-              "gpkg",
-              "geoparquet"
-            ],
-            "type": "string"
-          },
-          "title": "Filetypes",
-          "type": "array",
-          "description": "The output format",
-          "ecoscope:advanced": true
-        },
         "sanitize": {
           "default": false,
           "title": "Sanitize",
@@ -216,25 +170,6 @@
       "required": [],
       "type": "object",
       "title": "Persist Daily Summary"
-    },
-    "precipitation_chart": {
-      "additionalProperties": false,
-      "properties": {
-        "line_kwargs": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/LineStyle"
-            }
-          ],
-          "default": null,
-          "title": "Line Kwargs",
-          "description": "Line style settings",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Draw Precipitation Chart"
     }
   },
   "$defs": {
@@ -326,30 +261,6 @@
       ],
       "title": "EarthRangerConnection",
       "type": "object"
-    },
-    "LineStyle": {
-      "properties": {
-        "color": {
-          "default": null,
-          "ecoscope:advanced": true,
-          "title": "Color",
-          "type": "string"
-        },
-        "dash": {
-          "default": null,
-          "ecoscope:advanced": true,
-          "title": "Dash",
-          "type": "string"
-        },
-        "shape": {
-          "default": null,
-          "ecoscope:advanced": true,
-          "title": "Shape",
-          "type": "string"
-        }
-      },
-      "title": "LineStyle",
-      "type": "object"
     }
   },
   "uiSchema": {
@@ -366,12 +277,6 @@
         "timezone"
       ]
     },
-    "df_with_temporal_index": {
-      "ui:order": [
-        "cast_to_datetime",
-        "format"
-      ]
-    },
     "persist_observations": {
       "ui:order": [
         "filename",
@@ -382,7 +287,6 @@
     "persist_daily_summary": {
       "ui:order": [
         "filename",
-        "filetypes",
         "sanitize"
       ]
     },
@@ -392,10 +296,8 @@
       "groupers",
       "er_client_name",
       "filtered_weather_station",
-      "df_with_temporal_index",
       "persist_observations",
-      "persist_daily_summary",
-      "precipitation_chart"
+      "persist_daily_summary"
     ]
   },
   "additionalProperties": false

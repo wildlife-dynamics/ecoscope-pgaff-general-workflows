@@ -225,6 +225,8 @@ def main(params: Params):
             df=extract_date_stevens,
             time_col="recorded_at",
             groupers=groupers,
+            cast_to_datetime=True,
+            format="mixed",
             **(params_dict.get("df_with_temporal_index") or {}),
         )
         .call()
@@ -300,6 +302,7 @@ def main(params: Params):
         .with_tracing()
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filetypes=["csv"],
             **(params_dict.get("persist_daily_summary_stevens") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=daily_river)

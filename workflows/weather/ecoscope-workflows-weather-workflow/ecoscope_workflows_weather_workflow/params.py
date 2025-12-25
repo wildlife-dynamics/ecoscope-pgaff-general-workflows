@@ -29,22 +29,6 @@ class FilteredWeatherStation(BaseModel):
     )
 
 
-class DfWithTemporalIndex(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    cast_to_datetime: Optional[bool] = Field(
-        True,
-        description="Whether to attempt casting `time_col` to datetime.",
-        title="Cast To Datetime",
-    )
-    format: Optional[str] = Field(
-        "mixed",
-        description='            If `cast_to_datetime=True`, the format to pass to `pd.to_datetime`\n            when attempting to cast `time_col` to datetime. Defaults to "mixed".\n            ',
-        title="Format",
-    )
-
-
 class Filetype(str, Enum):
     csv = "csv"
     gpkg = "gpkg"
@@ -79,9 +63,6 @@ class PersistDailySummary(BaseModel):
         description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
         title="Filename",
     )
-    filetypes: Optional[List[Filetype]] = Field(
-        ["csv"], description="The output format", title="Filetypes"
-    )
     sanitize: Optional[bool] = Field(
         False,
         description="Whether to sanitize the dataframe for Arrow compatibility before persisting, recommended when including event or observation details",
@@ -106,12 +87,6 @@ class ValueGrouper(RootModel[str]):
 
 class EarthRangerConnection(BaseModel):
     name: str = Field(..., title="Data Source")
-
-
-class LineStyle(BaseModel):
-    color: Optional[str] = Field(None, title="Color")
-    dash: Optional[str] = Field(None, title="Dash")
-    shape: Optional[str] = Field(None, title="Shape")
 
 
 class TimeRange(BaseModel):
@@ -143,15 +118,6 @@ class ErClientName(BaseModel):
     )
 
 
-class PrecipitationChart(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    line_kwargs: Optional[LineStyle] = Field(
-        None, description="Line style settings", title="Line Kwargs"
-    )
-
-
 class Params(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -171,15 +137,9 @@ class Params(BaseModel):
     filtered_weather_station: Optional[FilteredWeatherStation] = Field(
         None, title="Select Weather Stations"
     )
-    df_with_temporal_index: Optional[DfWithTemporalIndex] = Field(
-        None, title="Add temporal index"
-    )
     persist_observations: Optional[PersistObservations] = Field(
         None, title="Persist Observations"
     )
     persist_daily_summary: Optional[PersistDailySummary] = Field(
         None, title="Persist Daily Summary"
-    )
-    precipitation_chart: Optional[PrecipitationChart] = Field(
-        None, title="Draw Precipitation Chart"
     )
