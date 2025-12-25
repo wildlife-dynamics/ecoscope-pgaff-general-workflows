@@ -179,6 +179,7 @@ workflow:
     partial:
       x_column: date
       y_column: Dissolved Oxygen (mg/L)
+      line_kwargs: 
         shape: "spline"
       layout_kwargs:
         xaxis:
@@ -210,8 +211,6 @@ workflow:
     partial:
       details: ${{ workflow.workflow_details.return}}
       widgets:
-        # - ${{ workflow.grouped_precipitation_widget.return }}
-        # - ${{ workflow.grouped_temperature_widget.return }}
         - ${{ workflow.depth_chart_widget.return }}
         - ${{ workflow.do_chart_widget.return }}
       time_range: ${{ workflow.time_range.return}}
