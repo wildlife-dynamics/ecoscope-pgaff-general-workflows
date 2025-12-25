@@ -3,8 +3,7 @@
 [workspace]
 name = "ecoscope-workflows-river-health-workflow"
 channels = [
-    "file:///tmp/ecoscope-workflows/release/artifacts/",
-    "file:///tmp/ecoscope-workflows-custom/release/artifacts/",
+    "https://repo.prefix.dev/ecoscope-workflows-custom/",
     "https://repo.prefix.dev/ecoscope-workflows/",
     "conda-forge",
     "microsoft",
@@ -20,20 +19,20 @@ platforms = [
 linux = "4.4.0"
 
 [dependencies.ecoscope-workflows-core]
-version = "*"
-channel = "file:///tmp/ecoscope-workflows/release/artifacts/"
+version = ">=0.19.4,<0.20.0"
+channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-ecoscope]
-version = "*"
-channel = "file:///tmp/ecoscope-workflows/release/artifacts/"
+version = ">=0.19.4,<0.20.0"
+channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-custom]
-version = "*"
-channel = "file:///tmp/ecoscope-workflows-custom/release/artifacts/"
+version = ">=0.0.10,<0.1.0"
+channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [feature.runner.dependencies.ecoscope-workflows-runner]
-version = "*"
-channel = "file:///tmp/ecoscope-workflows/release/artifacts/"
+version = ">=0.19.4,<0.20.0"
+channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [feature.runner.tasks]
 
@@ -125,5 +124,5 @@ solve-group = "test"
 no-default-feature = true
 
 [tasks]
-docker-build = "mkdir -p .tmp/ecoscope-workflows/release/artifacts/\n&& cp -r /tmp/ecoscope-workflows/release/artifacts/* .tmp/ecoscope-workflows/release/artifacts/\n&& docker buildx build -t ecoscope-workflows-river-health-workflow .\n"
+docker-build = "docker buildx build -t ecoscope-workflows-river-health-workflow ."
 ecoscope-workflows-river-health-workflow = "python -m ecoscope_workflows_river_health_workflow.cli"

@@ -1,14 +1,14 @@
 id: weather
 requirements:
   - name: ecoscope-workflows-core
-    version: "*"
-    channel: file:///tmp/ecoscope-workflows/release/artifacts/
+    version: ">=0.19.4, <0.20.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
   - name: ecoscope-workflows-ext-ecoscope
-    version: "*"
-    channel: file:///tmp/ecoscope-workflows/release/artifacts/
+    version: ">=0.19.4, <0.20.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
   - name: ecoscope-workflows-ext-custom
-    version: "*"
-    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
+    version: ">=0.0.10, <0.1.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 rjsf-overrides:
   $defs:
     ValueGrouper.oneOf: [
