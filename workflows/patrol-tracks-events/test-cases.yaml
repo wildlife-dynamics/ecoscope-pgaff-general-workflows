@@ -1,6 +1,5 @@
 month-grouper:
   name: Monthly Grouper
-  mock_io: true
   params:
     workflow_details:
       name: "Patrol Tracks Events Workflow"
