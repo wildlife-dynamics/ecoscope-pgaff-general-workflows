@@ -205,7 +205,8 @@ run_single_test_case() {
 # Main logic: run all test cases or a single one
 if [ "$run_all" = true ]; then
     # Get all test case names from test-cases.yaml
-    test_cases=($(yq 'keys | .[]' "$test_cases_file" | tr -d '"'))
+    # tr -d '\r' removes carriage returns for Windows compatibility
+    test_cases=($(yq 'keys | .[]' "$test_cases_file" | tr -d '"\r'))
 
     echo ""
     echo "Found ${#test_cases[@]} test cases: ${test_cases[*]}"
