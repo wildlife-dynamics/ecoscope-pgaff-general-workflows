@@ -95,7 +95,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        include: ${{ fromJson(needs.discover.outputs.pairs) }}
+        pairs: ${{ fromJson(needs.discover.outputs.pairs) }}
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -121,4 +121,4 @@ jobs:
           ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__MEP_DEV__USERNAME: ${{ secrets.ER_USERNAME }}
         run: |
           chmod +x dev/pytest-cli.sh || true
-          pixi run --manifest-path pixi.toml -e default bash dev/pytest-cli.sh ${{ matrix.workflow }} ${{ matrix.case }}
+          pixi run --manifest-path pixi.toml -e default bash dev/pytest-cli.sh ${{ matrix.pairs.workflow }} ${{ matrix.pairs.case }}
