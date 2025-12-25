@@ -107,7 +107,7 @@ cd "$workflow_dir"
 workflow_underscore=$(echo $workflow_name | tr '-' '_')
 
 # Build the command with conditional --mock-io flag
-cmd="python -m ecoscope_workflows_${workflow_underscore}_workflow.cli run --config-file \"$params_file\" --execution-mode sequential"
+cmd="python -m ecoscope_workflows_${workflow_underscore}_workflow.cli run --config-file $params_file --execution-mode sequential"
 if [ "$use_mock_io" = "true" ]; then
     cmd="$cmd --mock-io"
 fi
