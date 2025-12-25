@@ -18,12 +18,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history to enable git diff
 
       - name: Find workflow folders
         id: find-workflows
         run: |
           # Get changed files compared to the base branch
-          git fetch origin ${{ github.base_ref }}
           changed_files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
 
           echo "Changed files:"
