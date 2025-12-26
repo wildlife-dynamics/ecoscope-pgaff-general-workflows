@@ -1,0 +1,264 @@
+id: weather
+requirements:
+  - name: ecoscope-workflows-core
+    version: ">=0.19.4, <0.20.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+  - name: ecoscope-workflows-ext-ecoscope
+    version: ">=0.19.4, <0.20.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+  - name: ecoscope-workflows-ext-custom
+    version: ">=0.0.10, <0.1.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+rjsf-overrides:
+  $defs:
+    ValueGrouper.oneOf: [
+      {"const": "weather_station", "title": "Weather Station"},
+    ]
+
+
+workflow:
+  - name: Set Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+
+  - name: Time Range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%d %b %Y %H:%M:%S %Z"
+  
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
+
+  - name: Set Groupers
+    id: groupers
+    task: set_groupers
+
+  - name: Select EarthRanger Data Source
+    id: er_client_name
+    task: set_er_connection
+    
+  # subject group observations
+  - name: Get Subject Group Observations from EarthRanger
+    id: subject_obs
+    task: get_subjectgroup_observations
+    partial:
+      client: ${{ workflow.er_client_name.return }}
+      time_range: ${{ workflow.time_range.return }}
+      raise_on_empty: true
+      include_details: true
+      include_subjectsource_details: true
+      subject_group_name: "Subjects"
+  
+  - name: Remove Extra Column Prefix
+    id: drop_extra_prefix
+    task: drop_column_prefix
+    partial:
+      df: ${{ workflow.subject_obs.return }}
+      prefix: "extra__"
+      duplicate_strategy: "suffix"
+
+  - name: Preprocess Columns
+    id: process_columns
+    task: map_columns
+    partial:
+      df: ${{ workflow.drop_extra_prefix.return }}
+      drop_columns: []
+      retain_columns: ["id", "subject_id", "created_at", "recorded_at", "source", "device_status_properties", "observation_details", "geometry", "subject__name"]
+      rename_columns:
+        subject__name: "weather_station"
+
+
+  - name: "Convert to timezone"
+    id: convert_to_user_timezone
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.process_columns.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns: ["time"]
+
+  - name: Normalize Observation Details
+    id: normalize_obs_details
+    task: normalize_json_column
+    partial:
+      df: ${{ workflow.convert_to_user_timezone.return }}
+      column: "observation_details"
+      skip_if_not_exists: false
+
+  - name: Remove Column Prefix Observation Details
+    id: drop_obs_details_prefix
+    task: drop_column_prefix
+    partial:
+      df: ${{ workflow.normalize_obs_details.return }}
+      prefix: "observation_details__"
+      duplicate_strategy: "suffix"
+
+  - name: Extract Date
+    id: extract_date
+    task: extract_column_as_type
+    partial:
+      df: ${{ workflow.drop_obs_details_prefix.return }}
+      column_name: recorded_at
+      output_type: date
+      output_column_name: date
+
+  - name: Select Weather Stations
+    id: filtered_weather_station
+    task: filter_row_values
+    partial:
+      df: ${{ workflow.extract_date.return }}
+      column: "weather_station"
+
+  - name: Add temporal index
+    id: df_with_temporal_index
+    task: add_temporal_index
+    partial:
+      df: ${{ workflow.filtered_weather_station.return }}
+      time_col: recorded_at
+      groupers: ${{ workflow.groupers.return }}
+      cast_to_datetime: true
+      format: "mixed"
+
+  - name: Split by Group
+    id: split_weather_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.df_with_temporal_index.return }}
+      groupers: ${{ workflow.groupers.return }}
+
+  - name: Persist Observations
+    id: persist_observations
+    task: persist_df_wrapper
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_weather_groups.return }}
+
+  - name: Calculate Daily Summary
+    id: daily_weather
+    task: summarize_df
+    partial:
+      groupby_cols:
+        - weather_station
+        - date
+      summary_params:
+        - display_name: daily_precipitation
+          aggregator: sum
+          column: precipitation
+        - display_name: daily_temperature
+          aggregator: mean
+          column: surface_air_temperature
+      reset_index: true
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_weather_groups.return }}
+
+  - name: Persist Daily Summary
+    id: persist_daily_summary
+    task: persist_df_wrapper
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetypes: ["csv"]
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.daily_weather.return }}
+
+  - name: Draw Precipitation Chart
+    id: precipitation_chart
+    task: draw_line_chart
+    partial:
+      x_column: date
+      y_column: daily_precipitation
+      category_column: weather_station
+      line_kwargs:
+        shape: "hvh"
+      layout_kwargs:
+        xaxis:
+          title: "Date"
+        yaxis:
+          title: "Precipitation (mm)"
+        legend_title: "Weather Station"
+        hovermode: "closest"
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.daily_weather.return }}
+      
+  - name: Persist Precipitation Chart as Text
+    id: persist_precipitation
+    task: persist_text
+    partial:
+      root_path:  ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.precipitation_chart.return }}
+  - name: Create Precipitation Widget
+    id: precipitation_chart_widget
+    task: create_plot_widget_single_view
+    partial:
+      title: "Daily Precipitation by Station"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.persist_precipitation.return }}
+  - name: Merge Precipitation Widget Views
+    id: grouped_precipitation_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.precipitation_chart_widget.return }}
+      
+  - name: Draw Temperature Chart
+    id: temperature_chart
+    task: draw_line_chart
+    partial:
+      x_column: date
+      y_column: daily_temperature
+      category_column: weather_station
+      line_kwargs:
+        shape: "spline"
+      layout_kwargs:
+        # title: "Daily Temperature by Station"
+        xaxis:
+          title: "Date"
+        yaxis:
+          title: "Average Daily Temperature (Celsius)"
+        legend_title: "Weather Station"
+        hovermode: "closest"
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.daily_weather.return }}
+
+  - name: Persist Temperature Chart as Text
+    id: persist_temperature
+    task: persist_text
+    partial:
+      root_path:  ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.temperature_chart.return }}
+  - name: Create Temperature Widget
+    id: temperature_chart_widget
+    task: create_plot_widget_single_view
+    partial:
+      title: "Daily Temperature by Station"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.persist_temperature.return }}
+  - name: Merge Temperature Widget Views
+    id: grouped_temperature_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.temperature_chart_widget.return }}
+      
+  - name: Create A Weather Dashboard
+    id: weather_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return}}
+      widgets:
+        - ${{ workflow.grouped_precipitation_widget.return }}
+        - ${{ workflow.grouped_temperature_widget.return }}
+      time_range: ${{ workflow.time_range.return}}
+      groupers: ${{ workflow.groupers.return }}

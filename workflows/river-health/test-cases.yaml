@@ -1,0 +1,16 @@
+month-grouper:
+  name: Base Test Case
+  mock_io: false
+  params:
+    workflow_details:
+      name: "River Health Workflow"
+      description: "A workflow for river health monitoring."
+    er_client_name:
+      data_source:
+        name: "gmmf"
+    time_range:
+      since: "2025-11-20T00:00:00Z"
+      until: "2025-12-25T23:59:59Z"
+    groupers:
+      groupers: 
+        - "%B"

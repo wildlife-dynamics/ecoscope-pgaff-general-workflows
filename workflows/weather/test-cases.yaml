@@ -1,0 +1,39 @@
+base:
+  name: Base Test Case
+  mock_io: false
+  params:
+    workflow_details:
+      name: "Weather Workflow"
+      description: "A workflow for weather monitoring."
+    er_client_name:
+      data_source:
+        name: "gmmf"
+    time_range:
+      since: "2025-12-20T00:00:00Z"
+      until: "2025-12-25T23:59:59Z"
+    groupers:
+      groupers: []
+    persist_daily_summary:
+      filename: "weather_summary"
+
+weather-station:
+  name: Weather Station
+  mock_io: false
+  params:
+    workflow_details:
+      name: "Weather Workflow"
+      description: "A workflow for weather monitoring."
+    er_client_name:
+      data_source:
+        name: "gmmf"
+    time_range:
+      since: "2025-12-20T00:00:00Z"
+      until: "2025-12-25T23:59:59Z"
+    filtered_weather_station:
+      values: 
+        - "TA00569- Mara Triangle"
+        - "TA00570- Naboisho Conservancy"
+        - "TA00825- Mara North Conservancy"
+    groupers:
+      groupers: 
+        - weather_station
