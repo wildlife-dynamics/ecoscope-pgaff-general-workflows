@@ -4,10 +4,21 @@
         "x": 0,
         "y": 3,
         "widget_id": 0,
-        "w": 15,
-        "h": 15,
-        "minW": 5,
-        "minH": 10,
+        "w": 10,
+        "h": 12,
+        "minW": 10,
+        "minH": 12,
+        "static": false
+    },
+    {
+        "i": "1",
+        "x": 12,
+        "y": 3,
+        "widget_id": 1,
+        "w": 10,
+        "h": 12,
+        "minW": 10,
+        "minH": 12,
         "static": false
     }
 ]

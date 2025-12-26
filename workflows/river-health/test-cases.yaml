@@ -3,8 +3,8 @@ month-grouper:
   mock_io: false
   params:
     workflow_details:
-      name: "Weather Workflow"
-      description: "A workflow for weather monitoring."
+      name: "River Health Workflow"
+      description: "A workflow for river health monitoring."
     er_client_name:
       data_source:
         name: "gmmf"
