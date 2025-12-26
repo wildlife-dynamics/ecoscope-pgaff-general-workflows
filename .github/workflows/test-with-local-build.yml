@@ -62,6 +62,9 @@ jobs:
           ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__MEP_DEV__SERVER: ${{ secrets.ER_SERVER }}
           ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__MEP_DEV__PASSWORD: ${{ secrets.ER_PASSWORD }}
           ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__MEP_DEV__USERNAME: ${{ secrets.ER_USERNAME }}
+          ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__GMMF__SERVER: ${{ secrets.GMMF_SERVER }}
+          ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__GMMF__PASSWORD: ${{ secrets.GMMF_PASSWORD }}
+          ECOSCOPE_WORKFLOWS__CONNECTIONS__EARTHRANGER__GMMF__USERNAME: ${{ secrets.GMMF_USERNAME }}
         run: |
           chmod +x dev/pytest-cli.sh || true
           pixi run --manifest-path pixi.toml -e default bash dev/pytest-cli.sh ${{ matrix.workflow }} --all
