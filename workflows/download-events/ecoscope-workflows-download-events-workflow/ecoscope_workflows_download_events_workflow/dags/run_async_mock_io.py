@@ -30,6 +30,7 @@ get_events = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_events",  # 🧪
 )  # 🧪
+from ecoscope_workflows_ext_custom.tasks.transformation import clear_df as clear_df
 
 download_event_attachments = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_custom.tasks.io",  # 🧪
@@ -95,7 +96,8 @@ def main(params: Params):
         "get_timezone": ["time_range"],
         "er_client_name": [],
         "get_event_data": ["er_client_name", "time_range"],
-        "download_attachments": ["er_client_name", "get_event_data"],
+        "skip_attachment_download": ["get_event_data"],
+        "download_attachments": ["er_client_name", "skip_attachment_download"],
         "process_columns": ["get_event_data"],
         "convert_to_user_timezone": ["process_columns", "get_timezone"],
         "extract_reported_by": ["convert_to_user_timezone"],
@@ -107,7 +109,8 @@ def main(params: Params):
         "events_add_temporal_index": ["sql_query", "groupers"],
         "split_event_groups": ["events_add_temporal_index", "groupers"],
         "persist_events": ["split_event_groups"],
-        "events_colormap": ["sql_query", "split_event_groups"],
+        "skip_map_generation": ["split_event_groups"],
+        "events_colormap": ["sql_query", "skip_map_generation"],
         "rename_display_columns": ["events_colormap"],
         "set_events_map_title": [],
         "base_map_defs": [],
@@ -228,6 +231,25 @@ def main(params: Params):
             | (params_dict.get("get_event_data") or {}),
             method="call",
         ),
+        "skip_attachment_download": Node(
+            async_task=clear_df.validate()
+            .set_task_instance_id("skip_attachment_download")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("get_event_data"),
+            }
+            | (params_dict.get("skip_attachment_download") or {}),
+            method="call",
+        ),
         "download_attachments": Node(
             async_task=download_event_attachments.validate()
             .set_task_instance_id("download_attachments")
@@ -245,7 +267,8 @@ def main(params: Params):
                 "client": DependsOn("er_client_name"),
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "use_index_as_id": False,
-                "event_gdf": DependsOn("get_event_data"),
+                "event_gdf": DependsOn("skip_attachment_download"),
+                "skip_download": False,
             }
             | (params_dict.get("download_attachments") or {}),
             method="call",
@@ -474,10 +497,29 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filename_prefix": "events",
                 "sanitize": True,
             }
             | (params_dict.get("persist_events") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_event_groups"),
+            },
+        ),
+        "skip_map_generation": Node(
+            async_task=clear_df.validate()
+            .set_task_instance_id("skip_map_generation")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("skip_map_generation") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
@@ -507,7 +549,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
-                "argvalues": DependsOn("split_event_groups"),
+                "argvalues": DependsOn("skip_map_generation"),
             },
         ),
         "rename_display_columns": Node(

@@ -45,6 +45,7 @@ from ecoscope_workflows_ext_custom.tasks.io import (
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     apply_sql_query as apply_sql_query,
 )
+from ecoscope_workflows_ext_custom.tasks.transformation import clear_df as clear_df
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     create_point_layer as create_point_layer,
@@ -162,6 +163,24 @@ def main(params: Params):
         .call()
     )
 
+    skip_attachment_download = (
+        clear_df.validate()
+        .set_task_instance_id("skip_attachment_download")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=get_event_data, **(params_dict.get("skip_attachment_download") or {})
+        )
+        .call()
+    )
+
     download_attachments = (
         download_event_attachments.validate()
         .set_task_instance_id("download_attachments")
@@ -178,7 +197,8 @@ def main(params: Params):
             client=er_client_name,
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             use_index_as_id=False,
-            event_gdf=get_event_data,
+            event_gdf=skip_attachment_download,
+            skip_download=False,
             **(params_dict.get("download_attachments") or {}),
         )
         .call()
@@ -397,10 +417,25 @@ def main(params: Params):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            filename_prefix="events",
             sanitize=True,
             **(params_dict.get("persist_events") or {}),
         )
+        .mapvalues(argnames=["df"], argvalues=split_event_groups)
+    )
+
+    skip_map_generation = (
+        clear_df.validate()
+        .set_task_instance_id("skip_map_generation")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(**(params_dict.get("skip_map_generation") or {}))
         .mapvalues(argnames=["df"], argvalues=split_event_groups)
     )
 
@@ -423,7 +458,7 @@ def main(params: Params):
             output_column_name="event_type_colormap",
             **(params_dict.get("events_colormap") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=split_event_groups)
+        .mapvalues(argnames=["df"], argvalues=skip_map_generation)
     )
 
     rename_display_columns = (

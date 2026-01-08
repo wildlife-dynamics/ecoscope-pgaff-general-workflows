@@ -81,6 +81,7 @@
         },
         "event_columns": {
           "default": [
+            "id",
             "time",
             "event_type",
             "event_category",
@@ -94,6 +95,7 @@
           ],
           "items": {
             "enum": [
+              "id",
               "location",
               "time",
               "end_time",
@@ -138,6 +140,20 @@
       "type": "object",
       "title": "Get Event Data"
     },
+    "skip_attachment_download": {
+      "additionalProperties": false,
+      "properties": {
+        "skip": {
+          "default": false,
+          "title": "Skip",
+          "type": "boolean",
+          "description": "Skip the following tasks by setting the dataframe to be empty"
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Skip Attachment Download"
+    },
     "download_attachments": {
       "additionalProperties": false,
       "properties": {
@@ -147,12 +163,6 @@
           "type": "string",
           "description": "Subdirectory inside the output directory to store attachments.",
           "ecoscope:advanced": true
-        },
-        "skip_download": {
-          "default": false,
-          "title": "Skip Download",
-          "type": "boolean",
-          "description": "If True, skip downloading attachments."
         }
       },
       "required": [],
@@ -217,12 +227,12 @@
           "ecoscope:advanced": true
         },
         "rename_columns": {
-          "additionalProperties": {
-            "type": "string"
-          },
           "default": {},
+          "items": {
+            "$ref": "#/$defs/RenameColumn"
+          },
           "title": "Rename Columns",
-          "type": "object",
+          "type": "array",
           "description": "Dictionary of columns to rename.",
           "ecoscope:advanced": true
         }
@@ -300,11 +310,32 @@
           "type": "array",
           "description": "The output format",
           "uniqueItems": true
+        },
+        "filename_prefix": {
+          "default": null,
+          "title": "Filename Prefix",
+          "type": "string",
+          "description": "            Optional filename prefix to persist text to within the `root_path`.\n            We will always add a suffix based on the dataframe content hash to avoid duplicates.\n            ",
+          "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
       "title": "Persist Events"
+    },
+    "skip_map_generation": {
+      "additionalProperties": false,
+      "properties": {
+        "skip": {
+          "default": false,
+          "title": "Skip",
+          "type": "boolean",
+          "description": "Skip the following tasks by setting the dataframe to be empty"
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Skip Map Generation"
     },
     "base_map_defs": {
       "additionalProperties": false,
@@ -599,6 +630,24 @@
       "title": "Coordinate",
       "type": "object"
     },
+    "RenameColumn": {
+      "properties": {
+        "original_name": {
+          "title": "Original Name",
+          "type": "string"
+        },
+        "new_name": {
+          "title": "New Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "original_name",
+        "new_name"
+      ],
+      "title": "RenameColumn",
+      "type": "object"
+    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -663,12 +712,6 @@
         "event_columns"
       ]
     },
-    "download_attachments": {
-      "ui:order": [
-        "attachments_subdir",
-        "skip_download"
-      ]
-    },
     "filter_events": {
       "ui:order": [
         "bounding_box",
@@ -688,17 +731,25 @@
         "columns"
       ]
     },
+    "persist_events": {
+      "ui:order": [
+        "filetypes",
+        "filename_prefix"
+      ]
+    },
     "ui:order": [
       "workflow_details",
       "time_range",
       "er_client_name",
       "get_event_data",
+      "skip_attachment_download",
       "download_attachments",
       "filter_events",
       "customize_columns",
       "sql_query",
       "groupers",
       "persist_events",
+      "skip_map_generation",
       "base_map_defs"
     ]
   },

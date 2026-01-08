@@ -55,6 +55,7 @@ from ecoscope_workflows_ext_custom.tasks.io import (
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     apply_sql_query as apply_sql_query,
 )
+from ecoscope_workflows_ext_custom.tasks.transformation import clear_df as clear_df
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     create_point_layer as create_point_layer,
@@ -238,6 +239,36 @@ get_event_data = (
 
 
 # %% [markdown]
+# ## Skip Attachment Download
+
+# %%
+# parameters
+
+skip_attachment_download_params = dict(
+    skip=...,
+)
+
+# %%
+# call the task
+
+
+skip_attachment_download = (
+    clear_df.set_task_instance_id("skip_attachment_download")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(df=get_event_data, **skip_attachment_download_params)
+    .call()
+)
+
+
+# %% [markdown]
 # ## Download Attachments
 
 # %%
@@ -245,7 +276,6 @@ get_event_data = (
 
 download_attachments_params = dict(
     attachments_subdir=...,
-    skip_download=...,
 )
 
 # %%
@@ -267,7 +297,8 @@ download_attachments = (
         client=er_client_name,
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         use_index_as_id=False,
-        event_gdf=get_event_data,
+        event_gdf=skip_attachment_download,
+        skip_download=False,
         **download_attachments_params,
     )
     .call()
@@ -610,6 +641,7 @@ split_event_groups = (
 persist_events_params = dict(
     filename=...,
     filetypes=...,
+    filename_prefix=...,
 )
 
 # %%
@@ -628,10 +660,39 @@ persist_events = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_prefix="events",
         sanitize=True,
         **persist_events_params,
     )
+    .mapvalues(argnames=["df"], argvalues=split_event_groups)
+)
+
+
+# %% [markdown]
+# ## Skip Map Generation
+
+# %%
+# parameters
+
+skip_map_generation_params = dict(
+    skip=...,
+)
+
+# %%
+# call the task
+
+
+skip_map_generation = (
+    clear_df.set_task_instance_id("skip_map_generation")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**skip_map_generation_params)
     .mapvalues(argnames=["df"], argvalues=split_event_groups)
 )
 
@@ -666,7 +727,7 @@ events_colormap = (
         output_column_name="event_type_colormap",
         **events_colormap_params,
     )
-    .mapvalues(argnames=["df"], argvalues=split_event_groups)
+    .mapvalues(argnames=["df"], argvalues=skip_map_generation)
 )
 
 

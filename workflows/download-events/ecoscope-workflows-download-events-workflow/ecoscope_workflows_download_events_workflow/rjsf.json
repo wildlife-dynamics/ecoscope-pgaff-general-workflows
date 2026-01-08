@@ -81,6 +81,7 @@
         },
         "event_columns": {
           "default": [
+            "id",
             "time",
             "event_type",
             "event_category",
@@ -94,6 +95,7 @@
           ],
           "items": {
             "enum": [
+              "id",
               "location",
               "time",
               "end_time",
@@ -138,26 +140,41 @@
       "type": "object",
       "title": "Get Event Data"
     },
-    "download_attachments": {
-      "additionalProperties": false,
-      "properties": {
-        "attachments_subdir": {
-          "default": "attachments",
-          "title": "Attachments Subdirectory",
-          "type": "string",
-          "description": "Subdirectory inside the output directory to store attachments.",
-          "ecoscope:advanced": true
-        },
-        "skip_download": {
-          "default": true,
-          "title": "Skip Download",
-          "type": "boolean",
-          "description": "If True, skip downloading attachments."
-        }
-      },
-      "required": [],
+    "Download Attachments": {
       "type": "object",
-      "title": "Download Attachments"
+      "description": "Download attachments associated with the events.",
+      "ecoscope:task_group": true,
+      "properties": {
+        "skip_attachment_download": {
+          "additionalProperties": false,
+          "properties": {
+            "skip": {
+              "default": true,
+              "title": "Skip",
+              "type": "boolean",
+              "description": "Skip downloading all attachments associated with the events."
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Skip Attachment Download"
+        },
+        "download_attachments": {
+          "additionalProperties": false,
+          "properties": {
+            "attachments_subdir": {
+              "default": "attachments",
+              "title": "Attachments Subdirectory",
+              "type": "string",
+              "description": "Subdirectory inside the output directory to store attachments.",
+              "ecoscope:advanced": true
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Download Attachments"
+        }
+      }
     },
     "Process Events": {
       "type": "object",
@@ -222,12 +239,12 @@
               "ecoscope:advanced": true
             },
             "rename_columns": {
-              "additionalProperties": {
-                "type": "string"
-              },
               "default": {},
+              "items": {
+                "$ref": "#/$defs/RenameColumn"
+              },
               "title": "Rename Columns",
-              "type": "object",
+              "type": "array",
               "description": "Dictionary of columns to rename.",
               "ecoscope:advanced": true
             }
@@ -307,211 +324,239 @@
           "type": "array",
           "description": "The output format",
           "uniqueItems": true
+        },
+        "filename_prefix": {
+          "default": "events",
+          "title": "Filename Prefix",
+          "type": "string",
+          "description": "            Optional filename prefix to persist text to within the `root_path`.\n            We will always add a suffix based on the dataframe content hash to avoid duplicates.\n            ",
+          "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
       "title": "Persist Events"
     },
-    "base_map_defs": {
-      "additionalProperties": false,
-      "properties": {
-        "base_maps": {
-          "default": [
-            {
-              "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 1
-            },
-            {
-              "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 0.5
-            }
-          ],
-          "items": {
-            "title": "Base Layer",
-            "anyOf": [
-              {
-                "properties": {
-                  "url": {
-                    "default": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                    "enum": [
-                      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Open Street Map",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Roadmap",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Satellite",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Terrain",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "url": {
-                    "default": "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "LandDx",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "USGS Hillshade",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "url": {
-                    "default": "https://example.tiles.com/{z}/{x}/{y}.png",
-                    "description": "The URL of a publicly accessible tiled raster service.",
-                    "pattern": "https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}([-a-zA-Z0-9()@:%_\\+.~#?&//=\\{\\}]*)",
-                    "title": "Custom Layer URL",
-                    "type": "string"
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Custom Layer Opacity",
-                    "type": "number"
-                  },
-                  "max_zoom": {
-                    "default": null,
-                    "description": "Set the maximum zoom level to fetch tiles for.",
-                    "title": "Custom Layer Max Zoom",
-                    "type": "integer"
-                  },
-                  "min_zoom": {
-                    "default": null,
-                    "description": "Set the minimum zoom level to fetch tiles for.",
-                    "title": "Custom Layer Min Zoom",
-                    "type": "integer"
-                  }
-                },
-                "title": "Custom Layer (Advanced)",
-                "type": "object"
-              }
-            ]
-          },
-          "title": " ",
-          "type": "array",
-          "description": "Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
-          "ecoscope:advanced": true
-        }
-      },
+    "Generate Maps": {
       "type": "object",
-      "required": [],
-      "title": "Map Base Layers"
+      "description": "Generate maps to visualize the events data.",
+      "ecoscope:task_group": true,
+      "properties": {
+        "skip_map_generation": {
+          "additionalProperties": false,
+          "properties": {
+            "skip": {
+              "default": false,
+              "title": "Skip",
+              "type": "boolean",
+              "description": "Skip generating maps for the events data. Recommended for large datasets to improve performance."
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Skip Map Generation"
+        },
+        "base_map_defs": {
+          "additionalProperties": false,
+          "properties": {
+            "base_maps": {
+              "default": [
+                {
+                  "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+                  "opacity": 1
+                },
+                {
+                  "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                  "opacity": 0.5
+                }
+              ],
+              "items": {
+                "title": "Base Layer",
+                "anyOf": [
+                  {
+                    "properties": {
+                      "url": {
+                        "default": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        "title": "Preset Layer URL",
+                        "type": "string",
+                        "const": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        "enum": [
+                          "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        ]
+                      },
+                      "opacity": {
+                        "default": 1,
+                        "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Layer Opacity",
+                        "type": "number"
+                      }
+                    },
+                    "title": "Open Street Map",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "url": {
+                        "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                        "title": "Preset Layer URL",
+                        "type": "string",
+                        "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                        "enum": [
+                          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                      },
+                      "opacity": {
+                        "default": 1,
+                        "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Layer Opacity",
+                        "type": "number"
+                      }
+                    },
+                    "title": "Roadmap",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "url": {
+                        "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                        "title": "Preset Layer URL",
+                        "type": "string",
+                        "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                        "enum": [
+                          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                      },
+                      "opacity": {
+                        "default": 1,
+                        "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Layer Opacity",
+                        "type": "number"
+                      }
+                    },
+                    "title": "Satellite",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "url": {
+                        "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+                        "title": "Preset Layer URL",
+                        "type": "string",
+                        "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+                        "enum": [
+                          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                      },
+                      "opacity": {
+                        "default": 1,
+                        "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Layer Opacity",
+                        "type": "number"
+                      }
+                    },
+                    "title": "Terrain",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "url": {
+                        "default": "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
+                        "title": "Preset Layer URL",
+                        "type": "string",
+                        "const": "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
+                        "enum": [
+                          "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                      },
+                      "opacity": {
+                        "default": 1,
+                        "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Layer Opacity",
+                        "type": "number"
+                      }
+                    },
+                    "title": "LandDx",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "url": {
+                        "default": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                        "title": "Preset Layer URL",
+                        "type": "string",
+                        "const": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                        "enum": [
+                          "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                      },
+                      "opacity": {
+                        "default": 1,
+                        "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Layer Opacity",
+                        "type": "number"
+                      }
+                    },
+                    "title": "USGS Hillshade",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "url": {
+                        "default": "https://example.tiles.com/{z}/{x}/{y}.png",
+                        "description": "The URL of a publicly accessible tiled raster service.",
+                        "pattern": "https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}([-a-zA-Z0-9()@:%_\\+.~#?&//=\\{\\}]*)",
+                        "title": "Custom Layer URL",
+                        "type": "string"
+                      },
+                      "opacity": {
+                        "default": 1,
+                        "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
+                        "maximum": 1.0,
+                        "minimum": 0.0,
+                        "title": "Custom Layer Opacity",
+                        "type": "number"
+                      },
+                      "max_zoom": {
+                        "default": null,
+                        "description": "Set the maximum zoom level to fetch tiles for.",
+                        "title": "Custom Layer Max Zoom",
+                        "type": "integer"
+                      },
+                      "min_zoom": {
+                        "default": null,
+                        "description": "Set the minimum zoom level to fetch tiles for.",
+                        "title": "Custom Layer Min Zoom",
+                        "type": "integer"
+                      }
+                    },
+                    "title": "Custom Layer (Advanced)",
+                    "type": "object"
+                  }
+                ]
+              },
+              "title": " ",
+              "type": "array",
+              "description": "Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
+              "ecoscope:advanced": true
+            }
+          },
+          "type": "object",
+          "required": [],
+          "title": "Map Base Layers"
+        }
+      }
     }
   },
   "$defs": {
@@ -606,6 +651,24 @@
       "title": "Coordinate",
       "type": "object"
     },
+    "RenameColumn": {
+      "properties": {
+        "original_name": {
+          "title": "Original Name",
+          "type": "string"
+        },
+        "new_name": {
+          "title": "New Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "original_name",
+        "new_name"
+      ],
+      "title": "RenameColumn",
+      "type": "object"
+    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -670,15 +733,20 @@
         "event_columns"
       ]
     },
-    "download_attachments": {
+    "Download Attachments": {
       "ui:order": [
-        "attachments_subdir",
-        "skip_download"
+        "skip_attachment_download",
+        "download_attachments"
       ],
-      "attachments_subdir": {
-        "items": {
-          "ui:options": {
-            "label": false
+      "download_attachments": {
+        "ui:options": {
+          "label": false
+        },
+        "attachments_subdir": {
+          "items": {
+            "ui:options": {
+              "label": false
+            }
           }
         }
       }
@@ -708,7 +776,14 @@
           "drop_columns",
           "retain_columns",
           "rename_columns"
-        ]
+        ],
+        "rename_columns": {
+          "items": {
+            "ui:options": {
+              "label": false
+            }
+          }
+        }
       },
       "sql_query": {
         "ui:order": [
@@ -717,15 +792,27 @@
         ]
       }
     },
+    "persist_events": {
+      "ui:order": [
+        "filetypes",
+        "filename_prefix"
+      ]
+    },
+    "Generate Maps": {
+      "ui:order": [
+        "skip_map_generation",
+        "base_map_defs"
+      ]
+    },
     "ui:order": [
       "workflow_details",
       "time_range",
       "er_client_name",
       "get_event_data",
-      "download_attachments",
+      "Download Attachments",
       "Process Events",
       "persist_events",
-      "base_map_defs"
+      "Generate Maps"
     ],
     "base_map_defs": {
       "base_maps": {

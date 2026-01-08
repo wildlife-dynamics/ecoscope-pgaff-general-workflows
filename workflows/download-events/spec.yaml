@@ -11,11 +11,18 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 rjsf-overrides:
   properties:
-    download_attachments.properties.skip_download.default: true
+    Generate Maps.properties.skip_map_generation.properties.skip.description: >-
+      Skip generating maps for the events data. Recommended for large datasets to improve performance.
+    Download Attachments.properties.skip_attachment_download.properties.skip.description: >-
+      Skip downloading all attachments associated with the events.
+    Download Attachments.properties.skip_attachment_download.properties.skip.default: true
+    persist_events.properties.filename_prefix.default: "events"
   
   uiSchema:
-    download_attachments.attachments_subdir.items.ui:options.label: false
+    Download Attachments.download_attachments.ui:options.label: false
+    Download Attachments.download_attachments.attachments_subdir.items.ui:options.label: false
     Process Events.filter_events.filter_point_coords.items.ui:options.label: false
+    Process Events.customize_columns.rename_columns.items.ui:options.label: false
     base_map_defs.base_maps.items.ui:options.label: false
 task-instance-defaults:
   skipif:
@@ -56,15 +63,26 @@ workflow:
       include_related_events: false
       include_null_geometry: true
       include_display_values: true
+  - title: Download Attachments
+    type: task-group
+    description: >-
+      Download attachments associated with the events.
+    tasks:
+      - name: Skip Attachment Download
+        id: skip_attachment_download
+        task: clear_df
+        partial:
+          df: ${{ workflow.get_event_data.return }}
 
-  - name: Download Attachments
-    id: download_attachments
-    task: download_event_attachments
-    partial:
-      client: ${{ workflow.er_client_name.return }}
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      use_index_as_id: false
-      event_gdf: ${{ workflow.get_event_data.return }}
+      - name: Download Attachments
+        id: download_attachments
+        task: download_event_attachments
+        partial:
+          client: ${{ workflow.er_client_name.return }}
+          output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          use_index_as_id: false
+          event_gdf: ${{ workflow.skip_attachment_download.return }}
+          skip_download: false
 
   - title: Process Events
     type: task-group
@@ -162,7 +180,6 @@ workflow:
     task: persist_df_wrapper
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename_prefix: "events"
       sanitize: true
     mapvalues:
       argnames: df
@@ -171,108 +188,121 @@ workflow:
       conditions:
         - never
 
-  - name: Events Colormap
-    id: events_colormap
-    task: apply_color_map
-    partial:
-      df: ${{ workflow.sql_query.return }}
-      input_column_name: "event_type"
-      colormap: "tab20b"
-      output_column_name: "event_type_colormap"
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.split_event_groups.return }}
-  
+  - title: Generate Maps
+    type: task-group
+    description: >-
+      Generate maps to visualize the events data.
+    tasks:
 
-  # Rename columns for display
-  - name: Rename columns for map tooltip display
-    id: rename_display_columns
-    task: map_columns
-    partial:
-      drop_columns: []
-      retain_columns: []
-      rename_columns:
-        serial_number: "Event Serial"
-        event_time: "Event Time"
-        event_type_display: "Event Type"
-        reported_by_name: "Reported By"
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.events_colormap.return }}
+      - name: Skip Map Generation
+        id: skip_map_generation
+        task: clear_df
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_event_groups.return }}
 
-  - name: "Set Events Map Title"
-    id: set_events_map_title
-    task: set_string_var
-    partial:
-      var: "Events Map"
+      - name: Events Colormap
+        id: events_colormap
+        task: apply_color_map
+        partial:
+          df: ${{ workflow.sql_query.return }}
+          input_column_name: "event_type"
+          colormap: "tab20b"
+          output_column_name: "event_type_colormap"
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.skip_map_generation.return }}
+      
 
-  # Set base maps
-  - name: Map Base Layers
-    id: base_map_defs
-    task: set_base_maps
+      # Rename columns for display
+      - name: Rename columns for map tooltip display
+        id: rename_display_columns
+        task: map_columns
+        partial:
+          drop_columns: []
+          retain_columns: []
+          rename_columns:
+            serial_number: "Event Serial"
+            event_time: "Event Time"
+            event_type_display: "Event Type"
+            reported_by_name: "Reported By"
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.events_colormap.return }}
 
-  # Grouped Events Map
-  - name: Create map layer from grouped Events
-    id: grouped_events_map_layer
-    task: create_point_layer
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-        - all_geometry_are_none
-    partial:
-      layer_style:
-        fill_color_column: "event_type_colormap"
-        get_radius: 5
-      legend:
-        label_column: "Event Type"
-        color_column: "event_type_colormap"
-      tooltip_columns: ["Event Serial", "Event Time", "Event Type", "Reported By"]
-    mapvalues:
-      argnames: geodataframe
-      argvalues: ${{ workflow.rename_display_columns.return }}
-  - name: Draw Ecomap from grouped Events
-    id: grouped_events_ecomap
-    task: draw_ecomap
-    partial:
-      title: null
-      tile_layers: ${{ workflow.base_map_defs.return }}
-      north_arrow_style:
-        placement: "top-left"
-      legend_style:
-        title: "Event Type"
-        format_title: false
-        placement: "bottom-right"
-      static: false
-      max_zoom: 20
-      widget_id: ${{ workflow.set_events_map_title.return }}
-    mapvalues:
-      argnames: geo_layers
-      argvalues: ${{ workflow.grouped_events_map_layer.return }}
-  - name: Persist grouped Events Ecomap as Text
-    id: grouped_events_ecomap_html_url
-    task: persist_text
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-    mapvalues:
-      argnames: text
-      argvalues: ${{ workflow.grouped_events_ecomap.return }}
-  - name: Create grouped Events Map Widget
-    id: grouped_events_map_widget
-    task: create_map_widget_single_view
-    skipif:
-      conditions:
-        - never
-    partial:
-      title: ${{ workflow.set_events_map_title.return }}
-    map:
-      argnames: [view, data]
-      argvalues: ${{ workflow.grouped_events_ecomap_html_url.return }}
-  - name: Merge Events Map Widget Views
-    id: grouped_events_map_widget_merge
-    task: merge_widget_views
-    partial:
-      widgets: ${{ workflow.grouped_events_map_widget.return }}
+      - name: "Set Events Map Title"
+        id: set_events_map_title
+        task: set_string_var
+        partial:
+          var: "Events Map"
+
+      # Set base maps
+      - name: Map Base Layers
+        id: base_map_defs
+        task: set_base_maps
+
+      # Grouped Events Map
+      - name: Create map layer from grouped Events
+        id: grouped_events_map_layer
+        task: create_point_layer
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - all_geometry_are_none
+        partial:
+          layer_style:
+            fill_color_column: "event_type_colormap"
+            get_radius: 5
+          legend:
+            label_column: "Event Type"
+            color_column: "event_type_colormap"
+          tooltip_columns: ["Event Serial", "Event Time", "Event Type", "Reported By"]
+        mapvalues:
+          argnames: geodataframe
+          argvalues: ${{ workflow.rename_display_columns.return }}
+      - name: Draw Ecomap from grouped Events
+        id: grouped_events_ecomap
+        task: draw_ecomap
+        partial:
+          title: null
+          tile_layers: ${{ workflow.base_map_defs.return }}
+          north_arrow_style:
+            placement: "top-left"
+          legend_style:
+            title: "Event Type"
+            format_title: false
+            placement: "bottom-right"
+          static: false
+          max_zoom: 20
+          widget_id: ${{ workflow.set_events_map_title.return }}
+        mapvalues:
+          argnames: geo_layers
+          argvalues: ${{ workflow.grouped_events_map_layer.return }}
+      - name: Persist grouped Events Ecomap as Text
+        id: grouped_events_ecomap_html_url
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.grouped_events_ecomap.return }}
+      - name: Create grouped Events Map Widget
+        id: grouped_events_map_widget
+        task: create_map_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: ${{ workflow.set_events_map_title.return }}
+        map:
+          argnames: [view, data]
+          argvalues: ${{ workflow.grouped_events_ecomap_html_url.return }}
+      - name: Merge Events Map Widget Views
+        id: grouped_events_map_widget_merge
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.grouped_events_map_widget.return }}
 
   - name: Create Dashboard with Map Widgets
     id: events_dashboard

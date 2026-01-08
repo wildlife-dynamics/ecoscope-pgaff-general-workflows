@@ -22,7 +22,6 @@ base:
       ]
     persist_events:
       filetypes: ["geoparquet", "csv"]
-      sanitize: false
     base_map_defs:
       base_maps:
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
@@ -31,8 +30,8 @@ base:
           opacity: 0.5
           max_zoom: 17
           min_zoom: null
-    download_attachments:
-      skip_download: true
+    skip_attachment_download:
+      skip: true
 
 month-grouper:
   name: Monthly Grouper
@@ -61,7 +60,6 @@ month-grouper:
       ]
     persist_events:
       filetypes: ["geoparquet", "csv"]
-      sanitize: false
     base_map_defs:
       base_maps:
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
@@ -70,8 +68,8 @@ month-grouper:
           opacity: 0.5
           max_zoom: 17
           min_zoom: null
-    download_attachments:
-      skip_download: true
+    skip_attachment_download:
+      skip: true
 
 with-details:
   name: With Event Details
@@ -97,8 +95,6 @@ with-details:
       ]
     persist_events:
       filetypes: ["geoparquet", "csv"]
-      sanitize: true
-      filename: "events_with_details"
     base_map_defs:
       base_maps:
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
@@ -107,8 +103,8 @@ with-details:
           opacity: 0.5
           max_zoom: 17
           min_zoom: null
-    download_attachments:
-      skip_download: true
+    skip_attachment_download:
+      skip: true
 
 empty-results:
   name: Empty Results
@@ -134,8 +130,7 @@ empty-results:
       ]
     persist_events:
       filetypes: ["geoparquet", "csv"]
-      sanitize: true
-      filename: "events_with_details"
+      filename_prefix: "events_with_details"
     base_map_defs:
       base_maps:
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
@@ -158,6 +153,43 @@ with-attachments:
       until: "2015-03-06T23:59:59Z"
     er_client_name:
       data_source:
+        name: "mep"
+    get_event_data:
+      event_columns: ["id", "time", "event_type", "event_category", "reported_by", "serial_number", "geometry"]
+      event_types: []
+    filter_events:
+      filter_point_coords: [
+        {"x": 180.0, "y": 90.0},
+        {"x": 0.0, "y": 0.0},
+        {"x": 1.0, "y": 1.0},
+      ]
+    persist_events:
+      filetypes: ["geoparquet", "csv"]
+      filename_prefix: "events"
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 1.0
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.5
+          max_zoom: 17
+          min_zoom: null
+    skip_attachment_download:
+      skip: false
+
+
+skip-maps:
+  name: Download Events without generating maps
+  mock_io: true
+  params:
+    workflow_details:
+      name: "Events"
+      description: "A workflow to download events."
+    time_range:
+      since: "2015-03-04T00:00:00Z"
+      until: "2015-03-06T23:59:59Z"
+    er_client_name:
+      data_source:
         name: "mep_dev"
     get_event_data:
       event_columns: ["id", "time", "event_type", "event_category", "reported_by", "serial_number", "geometry"]
@@ -170,8 +202,7 @@ with-attachments:
       ]
     persist_events:
       filetypes: ["geoparquet", "csv"]
-      sanitize: true
-      filename: "events"
+      filename_prefix: "events"
     base_map_defs:
       base_maps:
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
@@ -180,5 +211,7 @@ with-attachments:
           opacity: 0.5
           max_zoom: 17
           min_zoom: null
-    download_attachments:
-      skip_download: false
+    skip_attachment_download:
+      skip: false
+    skip_map_generation:
+      skip: true

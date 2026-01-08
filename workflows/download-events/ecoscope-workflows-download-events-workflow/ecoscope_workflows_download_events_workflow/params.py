@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, confloat, constr
 
@@ -19,6 +19,7 @@ class WorkflowDetails(BaseModel):
 
 
 class EventColumn(str, Enum):
+    id = "id"
     location = "location"
     time = "time"
     end_time = "end_time"
@@ -61,6 +62,7 @@ class GetEventData(BaseModel):
     )
     event_columns: Optional[List[EventColumn]] = Field(
         [
+            "id",
             "time",
             "event_type",
             "event_category",
@@ -77,6 +79,17 @@ class GetEventData(BaseModel):
     )
 
 
+class SkipAttachmentDownload(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    skip: Optional[bool] = Field(
+        False,
+        description="Skip the following tasks by setting the dataframe to be empty",
+        title="Skip",
+    )
+
+
 class DownloadAttachments(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -85,28 +98,6 @@ class DownloadAttachments(BaseModel):
         "attachments",
         description="Subdirectory inside the output directory to store attachments.",
         title="Attachments Subdirectory",
-    )
-    skip_download: Optional[bool] = Field(
-        False,
-        description="If True, skip downloading attachments.",
-        title="Skip Download",
-    )
-
-
-class CustomizeColumns(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    drop_columns: Optional[List[str]] = Field(
-        [], description="List of columns to drop.", title="Drop Columns"
-    )
-    retain_columns: Optional[List[str]] = Field(
-        [],
-        description="List of columns to retain with the order specified by the list.\n                        Keep all the columns if the list is empty.",
-        title="Retain Columns",
-    )
-    rename_columns: Optional[Dict[str, str]] = Field(
-        {}, description="Dictionary of columns to rename.", title="Rename Columns"
     )
 
 
@@ -138,6 +129,22 @@ class PersistEvents(BaseModel):
     )
     filetypes: Optional[List[Filetype]] = Field(
         ["csv"], description="The output format", title="Filetypes"
+    )
+    filename_prefix: Optional[str] = Field(
+        None,
+        description="            Optional filename prefix to persist text to within the `root_path`.\n            We will always add a suffix based on the dataframe content hash to avoid duplicates.\n            ",
+        title="Filename Prefix",
+    )
+
+
+class SkipMapGeneration(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    skip: Optional[bool] = Field(
+        False,
+        description="Skip the following tasks by setting the dataframe to be empty",
+        title="Skip",
     )
 
 
@@ -330,6 +337,11 @@ class Coordinate(BaseModel):
     x: float = Field(..., description="Example 37.30906", title="Longitude")
 
 
+class RenameColumn(BaseModel):
+    original_name: str = Field(..., title="Original Name")
+    new_name: str = Field(..., title="New Name")
+
+
 class TemporalGrouper(RootModel[str]):
     root: str = Field(..., title="Time")
 
@@ -374,6 +386,23 @@ class FilterEvents(BaseModel):
     )
 
 
+class CustomizeColumns(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    drop_columns: Optional[List[str]] = Field(
+        [], description="List of columns to drop.", title="Drop Columns"
+    )
+    retain_columns: Optional[List[str]] = Field(
+        [],
+        description="List of columns to retain with the order specified by the list.\n                        Keep all the columns if the list is empty.",
+        title="Retain Columns",
+    )
+    rename_columns: Optional[List[RenameColumn]] = Field(
+        {}, description="Dictionary of columns to rename.", title="Rename Columns"
+    )
+
+
 class Groupers(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -399,6 +428,9 @@ class Params(BaseModel):
     )
     er_client_name: Optional[ErClientName] = Field(None, title="Data Source")
     get_event_data: Optional[GetEventData] = Field(None, title="Get Event Data")
+    skip_attachment_download: Optional[SkipAttachmentDownload] = Field(
+        None, title="Skip Attachment Download"
+    )
     download_attachments: Optional[DownloadAttachments] = Field(
         None, title="Download Attachments"
     )
@@ -409,4 +441,7 @@ class Params(BaseModel):
     sql_query: Optional[SqlQuery] = Field(None, title="Apply SQL Query")
     groupers: Optional[Groupers] = Field(None, title="Group Data")
     persist_events: Optional[PersistEvents] = Field(None, title="Persist Events")
+    skip_map_generation: Optional[SkipMapGeneration] = Field(
+        None, title="Skip Map Generation"
+    )
     base_map_defs: Optional[BaseMapDefs] = Field(None, title="Map Base Layers")
