@@ -456,6 +456,8 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filename_prefix": "events",
+                "sanitize": True,
             }
             | (params_dict.get("persist_events") or {}),
             method="mapvalues",
@@ -640,7 +642,6 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filename_suffix": "v2",
             }
             | (params_dict.get("grouped_events_ecomap_html_url") or {}),
             method="mapvalues",

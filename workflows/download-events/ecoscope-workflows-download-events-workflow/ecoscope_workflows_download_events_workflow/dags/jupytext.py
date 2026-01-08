@@ -610,7 +610,6 @@ split_event_groups = (
 persist_events_params = dict(
     filename=...,
     filetypes=...,
-    sanitize=...,
 )
 
 # %%
@@ -628,7 +627,10 @@ persist_events = (
         unpack_depth=1,
     )
     .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"], **persist_events_params
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filename_prefix="events",
+        sanitize=True,
+        **persist_events_params,
     )
     .mapvalues(argnames=["df"], argvalues=split_event_groups)
 )
@@ -851,6 +853,7 @@ grouped_events_ecomap = (
 
 grouped_events_ecomap_html_url_params = dict(
     filename=...,
+    filename_suffix=...,
 )
 
 # %%
@@ -870,7 +873,6 @@ grouped_events_ecomap_html_url = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="v2",
         **grouped_events_ecomap_html_url_params,
     )
     .mapvalues(argnames=["text"], argvalues=grouped_events_ecomap)

@@ -11,10 +11,10 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 rjsf-overrides:
   properties:
-    persist_events.properties.sanitize.default: true
     download_attachments.properties.skip_download.default: true
   
   uiSchema:
+    download_attachments.attachments_subdir.items.ui:options.label: false
     Process Events.filter_events.filter_point_coords.items.ui:options.label: false
     base_map_defs.base_maps.items.ui:options.label: false
 task-instance-defaults:
@@ -69,99 +69,101 @@ workflow:
   - title: Process Events
     type: task-group
     description: >-
-      Process Events by applying filters, SQL queries, etc. Note that the data here includes all the columns from the previous steps, including normalized event details.
+      Process events by applying filters, SQL queries, etc. Note that the data here includes all the columns from the previous steps and the normalized event details.
     tasks:
-    # - name: Remove Column Prefix Event Details
-    #   id: drop_event_details_prefix
-    #   task: drop_column_prefix
-    #   partial:
-    #     df: ${{ workflow.normalize_event_details.return }}
-    #     prefix: "event_details__"
+      # - name: Remove Column Prefix Event Details
+      #   id: drop_event_details_prefix
+      #   task: drop_column_prefix
+      #   partial:
+      #     df: ${{ workflow.normalize_event_details.return }}
+      #     prefix: "event_details__"
 
-    - name: Preprocess Columns
-      id: process_columns
-      task: map_columns
-      partial:
-        df: ${{ workflow.get_event_data.return }}
-        rename_columns:
-          time: event_time
-        drop_columns: []
-        retain_columns: []
+      - name: Preprocess Columns
+        id: process_columns
+        task: map_columns
+        partial:
+          df: ${{ workflow.get_event_data.return }}
+          rename_columns:
+            time: event_time
+          drop_columns: []
+          retain_columns: []
 
-    - name: "Convert to timezone"
-      id: convert_to_user_timezone
-      task: convert_values_to_timezone
-      partial:
-        df: ${{ workflow.process_columns.return }}
-        timezone: ${{ workflow.get_timezone.return }}
-        columns: ["time"]
+      - name: "Convert to timezone"
+        id: convert_to_user_timezone
+        task: convert_values_to_timezone
+        partial:
+          df: ${{ workflow.process_columns.return }}
+          timezone: ${{ workflow.get_timezone.return }}
+          columns: ["time"]
 
-    - name: Extract reported_by_name from Events
-      id: extract_reported_by
-      task: extract_value_from_json_column
-      partial:
-        df: ${{ workflow.convert_to_user_timezone.return }}
-        column_name: "reported_by"
-        field_name_options: ["name"]
-        output_type: "str"
-        output_column_name: "reported_by_name"
-        
-    - name: Normalize Event Details
-      id: normalize_event_details
-      task: normalize_json_column
-      partial:
-        df: ${{ workflow.extract_reported_by.return }}
-        column: "event_details"
-        skip_if_not_exists: true
-        sort_columns: true
+      - name: Extract reported_by_name from Events
+        id: extract_reported_by
+        task: extract_value_from_json_column
+        partial:
+          df: ${{ workflow.convert_to_user_timezone.return }}
+          column_name: "reported_by"
+          field_name_options: ["name"]
+          output_type: "str"
+          output_column_name: "reported_by_name"
+          
+      - name: Normalize Event Details
+        id: normalize_event_details
+        task: normalize_json_column
+        partial:
+          df: ${{ workflow.extract_reported_by.return }}
+          column: "event_details"
+          skip_if_not_exists: true
+          sort_columns: true
 
-    ## Custom Processing Steps ##
-    - name: Filter Event Relocations
-      id: filter_events
-      task: apply_reloc_coord_filter
-      partial:
-        df: ${{ workflow.normalize_event_details.return }}
-        roi_gdf: null
-        roi_name: null
+      ## Custom Processing Steps ##
+      - name: Filter Event Relocations
+        id: filter_events
+        task: apply_reloc_coord_filter
+        partial:
+          df: ${{ workflow.normalize_event_details.return }}
+          roi_gdf: null
+          roi_name: null
 
-    - name: Process Columns
-      id: customize_columns
-      task: map_columns
-      partial:
-        df: ${{ workflow.filter_events.return }}
+      - name: Process Columns
+        id: customize_columns
+        task: map_columns
+        partial:
+          df: ${{ workflow.filter_events.return }}
 
-    - name: Apply SQL Query
-      id: sql_query
-      task: apply_sql_query
-      partial:
-        df: ${{ workflow.customize_columns.return }}
+      - name: Apply SQL Query
+        id: sql_query
+        task: apply_sql_query
+        partial:
+          df: ${{ workflow.customize_columns.return }}
 
-    - name: Group Data
-      id: groupers
-      task: set_groupers
+      - name: Group Data
+        id: groupers
+        task: set_groupers
 
-    - name: Add temporal index to Events
-      id: events_add_temporal_index
-      task: add_temporal_index
-      partial:
-        df: ${{ workflow.sql_query.return }}
-        time_col: "event_time"
-        groupers: ${{ workflow.groupers.return }}
-        cast_to_datetime: true
-        format: "mixed"
+      - name: Add temporal index to Events
+        id: events_add_temporal_index
+        task: add_temporal_index
+        partial:
+          df: ${{ workflow.sql_query.return }}
+          time_col: "event_time"
+          groupers: ${{ workflow.groupers.return }}
+          cast_to_datetime: true
+          format: "mixed"
 
-    - name: Split Events by Group
-      id: split_event_groups
-      task: split_groups
-      partial:
-        df: ${{ workflow.events_add_temporal_index.return }}
-        groupers: ${{ workflow.groupers.return }}
+      - name: Split Events by Group
+        id: split_event_groups
+        task: split_groups
+        partial:
+          df: ${{ workflow.events_add_temporal_index.return }}
+          groupers: ${{ workflow.groupers.return }}
 
   - name: Persist Events
     id: persist_events
     task: persist_df_wrapper
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_prefix: "events"
+      sanitize: true
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.split_event_groups.return }}
@@ -252,7 +254,6 @@ workflow:
     task: persist_text
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename_suffix: "v2"
     mapvalues:
       argnames: text
       argvalues: ${{ workflow.grouped_events_ecomap.return }}

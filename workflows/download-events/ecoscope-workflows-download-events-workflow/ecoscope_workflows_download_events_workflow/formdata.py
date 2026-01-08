@@ -83,8 +83,8 @@ class DownloadAttachments(BaseModel):
     )
     attachments_subdir: Optional[str] = Field(
         "attachments",
-        description="Subdirectory inside output_dir to store attachments.",
-        title="Attachments Subdir",
+        description="Subdirectory inside the output directory to store attachments.",
+        title="Attachments Subdirectory",
     )
     skip_download: Optional[bool] = Field(
         True,
@@ -136,18 +136,8 @@ class PersistEvents(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    filename: Optional[str] = Field(
-        None,
-        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
-        title="Filename",
-    )
     filetypes: Optional[List[Filetype]] = Field(
         ["csv"], description="The output format", title="Filetypes"
-    )
-    sanitize: Optional[bool] = Field(
-        True,
-        description="Whether to sanitize the dataframe for Arrow compatibility before persisting, recommended when including event or observation details",
-        title="Sanitize",
     )
 
 
@@ -424,7 +414,7 @@ class FormData(BaseModel):
     Process_Events: Optional[ProcessEvents] = Field(
         None,
         alias="Process Events",
-        description="Process Events by applying filters, SQL queries, etc. Note that the data here includes all the columns from the previous steps, including normalized event details.",
+        description="Process events by applying filters, SQL queries, etc. Note that the data here includes all the columns from the previous steps and the normalized event details.",
     )
     persist_events: Optional[PersistEvents] = Field(None, title="Persist Events")
     base_map_defs: Optional[BaseMapDefs] = Field(None, title="Map Base Layers")
