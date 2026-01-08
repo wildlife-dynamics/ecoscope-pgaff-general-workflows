@@ -80,17 +80,60 @@
           "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
         },
         "event_columns": {
+          "default": [
+            "time",
+            "event_type",
+            "event_category",
+            "title",
+            "reported_by",
+            "created_at",
+            "serial_number",
+            "is_collection",
+            "event_details",
+            "geometry"
+          ],
           "items": {
+            "enum": [
+              "location",
+              "time",
+              "end_time",
+              "message",
+              "provenance",
+              "event_type",
+              "event_category",
+              "priority",
+              "priority_label",
+              "attributes",
+              "comment",
+              "title",
+              "reported_by",
+              "state",
+              "is_contained_in",
+              "sort_at",
+              "patrol_segments",
+              "geometry",
+              "updated_at",
+              "created_at",
+              "icon_id",
+              "serial_number",
+              "url",
+              "image_url",
+              "geojson",
+              "is_collection",
+              "event_details",
+              "related_subjects",
+              "patrols"
+            ],
             "type": "string"
           },
           "title": "Event Columns",
           "type": "array",
-          "description": "The interested event columns"
+          "description": "Choose the interested event columns. If none is chosen, all columns will be returned.",
+          "uniqueItems": true
         }
       },
       "required": [
-        "event_types",
-        "event_columns"
+        "event_types"
       ],
       "type": "object",
       "title": "Get Event Data"
@@ -114,26 +157,6 @@
       "required": [],
       "type": "object",
       "title": "Download Attachments"
-    },
-    "drop_event_details_prefix": {
-      "additionalProperties": false,
-      "properties": {
-        "duplicate_strategy": {
-          "default": "suffix",
-          "enum": [
-            "suffix",
-            "error",
-            "keep_original"
-          ],
-          "title": "Duplicate Strategy",
-          "type": "string",
-          "description": "Strategy for handling duplicate column names after removing prefix. 'suffix': append _1, _2, etc. to duplicates; 'error': raise ValueError if duplicates would occur; 'keep_original': keep original name with prefix if duplicate would occur.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Remove Column Prefix Event Details"
     },
     "filter_events": {
       "additionalProperties": false,
@@ -189,7 +212,7 @@
           },
           "title": "Retain Columns",
           "type": "array",
-          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
+          "description": "List of columns to retain with the order specified by the list.\n                        Keep all the columns if the list is empty.",
           "ecoscope:advanced": true
         },
         "rename_columns": {
@@ -214,22 +237,16 @@
           "default": "",
           "title": "Query",
           "type": "string",
-          "description": "SQL query string to apply to the DataFrame. Use 'df' as the table name in the query."
+          "description": "SQL query string to apply to the DataFrame. Leaves it unchanged when the field is emptyUse 'df' as the table name in the query.",
+          "ecoscope:advanced": true
         },
         "columns": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
           "default": null,
+          "items": {
+            "type": "string"
+          },
           "title": "Columns",
+          "type": "array",
           "description": "Optional list of column names to include in the SQL query context. If specified, only these columns will be available in the 'df' table for querying. Use this to exclude columns with unsupported data types (list, dict) that cannot be stored in SQLite. If not specified, all columns are included.",
           "ecoscope:advanced": true
         }
@@ -697,7 +714,6 @@
       "er_client_name",
       "get_event_data",
       "download_attachments",
-      "drop_event_details_prefix",
       "filter_events",
       "customize_columns",
       "sql_query",

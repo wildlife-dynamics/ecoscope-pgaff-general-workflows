@@ -55,9 +55,6 @@ from ecoscope_workflows_ext_custom.tasks.io import (
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     apply_sql_query as apply_sql_query,
 )
-from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_column_prefix as drop_column_prefix,
-)
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     create_point_layer as create_point_layer,
@@ -406,41 +403,8 @@ normalize_event_details = (
         df=extract_reported_by,
         column="event_details",
         skip_if_not_exists=True,
+        sort_columns=True,
         **normalize_event_details_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Remove Column Prefix Event Details
-
-# %%
-# parameters
-
-drop_event_details_prefix_params = dict(
-    duplicate_strategy=...,
-)
-
-# %%
-# call the task
-
-
-drop_event_details_prefix = (
-    drop_column_prefix.set_task_instance_id("drop_event_details_prefix")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        df=normalize_event_details,
-        prefix="event_details__",
-        **drop_event_details_prefix_params,
     )
     .call()
 )
@@ -473,10 +437,7 @@ filter_events = (
         unpack_depth=1,
     )
     .partial(
-        df=drop_event_details_prefix,
-        roi_gdf=None,
-        roi_name=None,
-        **filter_events_params,
+        df=normalize_event_details, roi_gdf=None, roi_name=None, **filter_events_params
     )
     .call()
 )
@@ -1000,7 +961,7 @@ events_dashboard = (
     )
     .partial(
         details=workflow_details,
-        widgets=grouped_events_map_widget_merge,
+        widgets=[grouped_events_map_widget_merge],
         groupers=groupers,
         time_range=time_range,
         **events_dashboard_params,

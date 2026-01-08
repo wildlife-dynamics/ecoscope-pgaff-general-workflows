@@ -2,7 +2,7 @@
 import json
 import os
 
-from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
+from ecoscope_workflows_core.graph import DependsOn, Graph, Node
 from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
 from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
@@ -46,9 +46,6 @@ from ecoscope_workflows_ext_custom.tasks.io import (
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     apply_sql_query as apply_sql_query,
 )
-from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_column_prefix as drop_column_prefix,
-)
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     create_point_layer as create_point_layer,
@@ -85,8 +82,7 @@ def main(params: Params):
         "convert_to_user_timezone": ["process_columns", "get_timezone"],
         "extract_reported_by": ["convert_to_user_timezone"],
         "normalize_event_details": ["extract_reported_by"],
-        "drop_event_details_prefix": ["normalize_event_details"],
-        "filter_events": ["drop_event_details_prefix"],
+        "filter_events": ["normalize_event_details"],
         "customize_columns": ["filter_events"],
         "sql_query": ["customize_columns"],
         "groupers": [],
@@ -251,9 +247,9 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("get_event_data"),
-                "rename_columns": {"time": "event_time"},
-                "drop_columns": [],
-                "retain_columns": [],
+                "rename_columns": {
+                    "time": "event_time",
+                },
             }
             | (params_dict.get("process_columns") or {}),
             method="call",
@@ -274,7 +270,9 @@ def main(params: Params):
             partial={
                 "df": DependsOn("process_columns"),
                 "timezone": DependsOn("get_timezone"),
-                "columns": ["time"],
+                "columns": [
+                    "time",
+                ],
             }
             | (params_dict.get("convert_to_user_timezone") or {}),
             method="call",
@@ -295,7 +293,9 @@ def main(params: Params):
             partial={
                 "df": DependsOn("convert_to_user_timezone"),
                 "column_name": "reported_by",
-                "field_name_options": ["name"],
+                "field_name_options": [
+                    "name",
+                ],
                 "output_type": "str",
                 "output_column_name": "reported_by_name",
             }
@@ -319,28 +319,9 @@ def main(params: Params):
                 "df": DependsOn("extract_reported_by"),
                 "column": "event_details",
                 "skip_if_not_exists": True,
+                "sort_columns": True,
             }
             | (params_dict.get("normalize_event_details") or {}),
-            method="call",
-        ),
-        "drop_event_details_prefix": Node(
-            async_task=drop_column_prefix.validate()
-            .set_task_instance_id("drop_event_details_prefix")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "df": DependsOn("normalize_event_details"),
-                "prefix": "event_details__",
-            }
-            | (params_dict.get("drop_event_details_prefix") or {}),
             method="call",
         ),
         "filter_events": Node(
@@ -357,7 +338,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("drop_event_details_prefix"),
+                "df": DependsOn("normalize_event_details"),
                 "roi_gdf": None,
                 "roi_name": None,
             }
@@ -523,8 +504,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "drop_columns": [],
-                "retain_columns": [],
                 "rename_columns": {
                     "serial_number": "Event Serial",
                     "event_time": "Event Time",
@@ -627,7 +606,9 @@ def main(params: Params):
             partial={
                 "title": None,
                 "tile_layers": DependsOn("base_map_defs"),
-                "north_arrow_style": {"placement": "top-left"},
+                "north_arrow_style": {
+                    "placement": "top-left",
+                },
                 "legend_style": {
                     "title": "Event Type",
                     "format_title": False,
@@ -724,7 +705,9 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "details": DependsOn("workflow_details"),
-                "widgets": DependsOn("grouped_events_map_widget_merge"),
+                "widgets": [
+                    DependsOn("grouped_events_map_widget_merge"),
+                ],
                 "groupers": DependsOn("groupers"),
                 "time_range": DependsOn("time_range"),
             }
