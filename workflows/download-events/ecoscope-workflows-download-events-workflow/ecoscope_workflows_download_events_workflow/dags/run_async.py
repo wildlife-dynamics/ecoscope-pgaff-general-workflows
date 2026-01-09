@@ -92,7 +92,7 @@ def main(params: Params):
         "split_event_groups": ["events_add_temporal_index", "groupers"],
         "persist_events": ["split_event_groups"],
         "skip_map_generation": ["split_event_groups"],
-        "events_colormap": ["sql_query", "skip_map_generation"],
+        "events_colormap": ["skip_map_generation"],
         "rename_display_columns": ["events_colormap"],
         "set_events_map_title": [],
         "base_map_defs": [],
@@ -522,7 +522,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("sql_query"),
                 "input_column_name": "event_type",
                 "colormap": "tab20b",
                 "output_column_name": "event_type_colormap",

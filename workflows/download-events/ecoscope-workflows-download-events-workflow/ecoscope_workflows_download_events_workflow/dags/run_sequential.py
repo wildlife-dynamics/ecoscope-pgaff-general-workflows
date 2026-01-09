@@ -452,7 +452,6 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            df=sql_query,
             input_column_name="event_type",
             colormap="tab20b",
             output_column_name="event_type_colormap",
