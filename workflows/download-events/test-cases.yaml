@@ -149,11 +149,11 @@ with-attachments:
       name: "Events"
       description: "A workflow to download events."
     time_range:
-      since: "2015-03-04T00:00:00Z"
-      until: "2015-03-06T23:59:59Z"
+      since: "2026-01-02T00:00:00Z"
+      until: "2026-01-02T23:59:59Z"
     er_client_name:
       data_source:
-        name: "mep"
+        name: "mep_dev"
     get_event_data:
       event_columns: ["id", "time", "event_type", "event_category", "reported_by", "serial_number", "geometry"]
       event_types: []
