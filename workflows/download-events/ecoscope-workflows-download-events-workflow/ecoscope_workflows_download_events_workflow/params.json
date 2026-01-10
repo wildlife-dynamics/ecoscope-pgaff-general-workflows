@@ -80,62 +80,17 @@
           "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
         },
         "event_columns": {
-          "default": [
-            "id",
-            "time",
-            "event_type",
-            "event_category",
-            "title",
-            "reported_by",
-            "created_at",
-            "serial_number",
-            "is_collection",
-            "event_details",
-            "geometry"
-          ],
           "items": {
-            "enum": [
-              "id",
-              "location",
-              "time",
-              "end_time",
-              "message",
-              "provenance",
-              "event_type",
-              "event_category",
-              "priority",
-              "priority_label",
-              "attributes",
-              "comment",
-              "title",
-              "reported_by",
-              "state",
-              "is_contained_in",
-              "sort_at",
-              "patrol_segments",
-              "geometry",
-              "updated_at",
-              "created_at",
-              "icon_id",
-              "serial_number",
-              "url",
-              "image_url",
-              "geojson",
-              "is_collection",
-              "event_details",
-              "related_subjects",
-              "patrols"
-            ],
             "type": "string"
           },
           "title": "Event Columns",
           "type": "array",
-          "description": "Choose the interested event columns. If none is chosen, all columns will be returned.",
-          "uniqueItems": true
+          "description": "The interested event columns"
         }
       },
       "required": [
-        "event_types"
+        "event_types",
+        "event_columns"
       ],
       "type": "object",
       "title": "Get Event Data"
@@ -223,16 +178,16 @@
           },
           "title": "Retain Columns",
           "type": "array",
-          "description": "List of columns to retain with the order specified by the list.\n                        Keep all the columns if the list is empty.",
+          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
           "ecoscope:advanced": true
         },
         "rename_columns": {
-          "default": {},
-          "items": {
-            "$ref": "#/$defs/RenameColumn"
+          "additionalProperties": {
+            "type": "string"
           },
+          "default": {},
           "title": "Rename Columns",
-          "type": "array",
+          "type": "object",
           "description": "Dictionary of columns to rename.",
           "ecoscope:advanced": true
         }
@@ -628,24 +583,6 @@
         "x"
       ],
       "title": "Coordinate",
-      "type": "object"
-    },
-    "RenameColumn": {
-      "properties": {
-        "original_name": {
-          "title": "Original Name",
-          "type": "string"
-        },
-        "new_name": {
-          "title": "New Name",
-          "type": "string"
-        }
-      },
-      "required": [
-        "original_name",
-        "new_name"
-      ],
-      "title": "RenameColumn",
       "type": "object"
     },
     "TemporalGrouper": {
