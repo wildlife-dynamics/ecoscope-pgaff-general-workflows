@@ -29,7 +29,7 @@ get_events = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_events",  # 🧪
 )  # 🧪
-from ecoscope_workflows_ext_custom.tasks.transformation import clear_df as clear_df
+from ecoscope_workflows_ext_custom.tasks.skip import maybe_skip_df as maybe_skip_df
 
 download_event_attachments = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_custom.tasks.io",  # 🧪
@@ -182,7 +182,7 @@ def main(params: Params):
     )
 
     skip_attachment_download = (
-        clear_df.validate()
+        maybe_skip_df.validate()
         .set_task_instance_id("skip_attachment_download")
         .handle_errors()
         .with_tracing()
@@ -442,7 +442,7 @@ def main(params: Params):
     )
 
     skip_map_generation = (
-        clear_df.validate()
+        maybe_skip_df.validate()
         .set_task_instance_id("skip_map_generation")
         .handle_errors()
         .with_tracing()

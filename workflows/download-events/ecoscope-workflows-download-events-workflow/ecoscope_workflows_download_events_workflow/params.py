@@ -85,7 +85,7 @@ class SkipAttachmentDownload(BaseModel):
     )
     skip: Optional[bool] = Field(
         False,
-        description="Skip the following tasks by setting the dataframe to be empty",
+        description="Skip the following tasks if True, returning a sentinel value.",
         title="Skip",
     )
 
@@ -143,7 +143,7 @@ class SkipMapGeneration(BaseModel):
     )
     skip: Optional[bool] = Field(
         False,
-        description="Skip the following tasks by setting the dataframe to be empty",
+        description="Skip the following tasks if True, returning a sentinel value.",
         title="Skip",
     )
 

@@ -42,10 +42,10 @@ from ecoscope_workflows_ext_custom.tasks.io import (
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
 )
+from ecoscope_workflows_ext_custom.tasks.skip import maybe_skip_df as maybe_skip_df
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     apply_sql_query as apply_sql_query,
 )
-from ecoscope_workflows_ext_custom.tasks.transformation import clear_df as clear_df
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     create_point_layer as create_point_layer,
@@ -164,7 +164,7 @@ def main(params: Params):
     )
 
     skip_attachment_download = (
-        clear_df.validate()
+        maybe_skip_df.validate()
         .set_task_instance_id("skip_attachment_download")
         .handle_errors()
         .with_tracing()
@@ -424,7 +424,7 @@ def main(params: Params):
     )
 
     skip_map_generation = (
-        clear_df.validate()
+        maybe_skip_df.validate()
         .set_task_instance_id("skip_map_generation")
         .handle_errors()
         .with_tracing()

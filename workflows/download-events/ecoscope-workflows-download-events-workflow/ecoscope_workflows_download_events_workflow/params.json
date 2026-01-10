@@ -147,7 +147,7 @@
           "default": false,
           "title": "Skip",
           "type": "boolean",
-          "description": "Skip the following tasks by setting the dataframe to be empty"
+          "description": "Skip the following tasks if True, returning a sentinel value."
         }
       },
       "required": [],
@@ -330,7 +330,7 @@
           "default": false,
           "title": "Skip",
           "type": "boolean",
-          "description": "Skip the following tasks by setting the dataframe to be empty"
+          "description": "Skip the following tasks if True, returning a sentinel value."
         }
       },
       "required": [],

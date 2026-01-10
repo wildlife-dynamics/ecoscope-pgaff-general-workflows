@@ -70,7 +70,7 @@ workflow:
     tasks:
       - name: Skip Attachment Download
         id: skip_attachment_download
-        task: clear_df
+        task: maybe_skip_df
         partial:
           df: ${{ workflow.get_event_data.return }}
 
@@ -196,7 +196,7 @@ workflow:
 
       - name: Skip Map Generation
         id: skip_map_generation
-        task: clear_df
+        task: maybe_skip_df
         mapvalues:
           argnames: df
           argvalues: ${{ workflow.split_event_groups.return }}
