@@ -80,17 +80,62 @@
           "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
         },
         "event_columns": {
+          "default": [
+            "id",
+            "time",
+            "event_type",
+            "event_category",
+            "title",
+            "reported_by",
+            "created_at",
+            "serial_number",
+            "is_collection",
+            "event_details",
+            "geometry"
+          ],
           "items": {
+            "enum": [
+              "id",
+              "location",
+              "time",
+              "end_time",
+              "message",
+              "provenance",
+              "event_type",
+              "event_category",
+              "priority",
+              "priority_label",
+              "attributes",
+              "comment",
+              "title",
+              "reported_by",
+              "state",
+              "is_contained_in",
+              "sort_at",
+              "patrol_segments",
+              "geometry",
+              "updated_at",
+              "created_at",
+              "icon_id",
+              "serial_number",
+              "url",
+              "image_url",
+              "geojson",
+              "is_collection",
+              "event_details",
+              "related_subjects",
+              "patrols"
+            ],
             "type": "string"
           },
           "title": "Event Columns",
           "type": "array",
-          "description": "The interested event columns"
+          "description": "Choose the interested event columns. If none is chosen, all columns will be returned.",
+          "uniqueItems": true
         }
       },
       "required": [
-        "event_types",
-        "event_columns"
+        "event_types"
       ],
       "type": "object",
       "title": "Get Event Data"
@@ -164,6 +209,13 @@
               "type": "array",
               "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
               "ecoscope:advanced": true
+            },
+            "reset_index": {
+              "default": true,
+              "title": "Reset Index",
+              "type": "boolean",
+              "description": "Reset index after filtering",
+              "ecoscope:advanced": true
             }
           },
           "required": [],
@@ -190,16 +242,16 @@
               },
               "title": "Retain Columns",
               "type": "array",
-              "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
+              "description": "List of columns to retain with the order specified by the list.\n                        Keep all the columns if the list is empty.",
               "ecoscope:advanced": true
             },
             "rename_columns": {
-              "additionalProperties": {
-                "type": "string"
-              },
               "default": {},
+              "items": {
+                "$ref": "#/$defs/RenameColumn"
+              },
               "title": "Rename Columns",
-              "type": "object",
+              "type": "array",
               "description": "Dictionary of columns to rename.",
               "ecoscope:advanced": true
             }
@@ -501,7 +553,7 @@
                   }
                 ]
               },
-              "title": " ",
+              "title": "Map Base Layers",
               "type": "array",
               "description": "Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
               "ecoscope:advanced": true
@@ -509,7 +561,7 @@
           },
           "type": "object",
           "required": [],
-          "title": "Map Base Layers"
+          "title": " "
         }
       }
     }
@@ -606,6 +658,24 @@
       "title": "Coordinate",
       "type": "object"
     },
+    "RenameColumn": {
+      "properties": {
+        "original_name": {
+          "title": "Original Name",
+          "type": "string"
+        },
+        "new_name": {
+          "title": "New Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "original_name",
+        "new_name"
+      ],
+      "title": "RenameColumn",
+      "type": "object"
+    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -698,7 +768,8 @@
       "filter_events": {
         "ui:order": [
           "bounding_box",
-          "filter_point_coords"
+          "filter_point_coords",
+          "reset_index"
         ],
         "filter_point_coords": {
           "items": {
@@ -750,16 +821,7 @@
       "Process Events",
       "persist_events",
       "Generate Maps"
-    ],
-    "base_map_defs": {
-      "base_maps": {
-        "items": {
-          "ui:options": {
-            "label": false
-          }
-        }
-      }
-    }
+    ]
   },
   "additionalProperties": false
 }

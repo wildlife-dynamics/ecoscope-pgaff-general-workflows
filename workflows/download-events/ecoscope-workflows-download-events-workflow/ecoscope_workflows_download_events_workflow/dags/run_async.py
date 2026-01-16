@@ -2,7 +2,7 @@
 import json
 import os
 
-from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
+from ecoscope_workflows_core.graph import DependsOn, Graph, Node
 from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
 from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
@@ -270,9 +270,9 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("get_event_data"),
-                "rename_columns": {"time": "event_time"},
-                "drop_columns": [],
-                "retain_columns": [],
+                "rename_columns": {
+                    "time": "event_time",
+                },
             }
             | (params_dict.get("process_columns") or {}),
             method="call",
@@ -293,7 +293,9 @@ def main(params: Params):
             partial={
                 "df": DependsOn("process_columns"),
                 "timezone": DependsOn("get_timezone"),
-                "columns": ["time"],
+                "columns": [
+                    "time",
+                ],
             }
             | (params_dict.get("convert_to_user_timezone") or {}),
             method="call",
@@ -314,7 +316,9 @@ def main(params: Params):
             partial={
                 "df": DependsOn("convert_to_user_timezone"),
                 "column_name": "reported_by",
-                "field_name_options": ["name"],
+                "field_name_options": [
+                    "name",
+                ],
                 "output_type": "str",
                 "output_column_name": "reported_by_name",
             }
@@ -543,8 +547,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "drop_columns": [],
-                "retain_columns": [],
                 "rename_columns": {
                     "serial_number": "Event Serial",
                     "event_time": "Event Time",
@@ -647,7 +649,9 @@ def main(params: Params):
             partial={
                 "title": None,
                 "tile_layers": DependsOn("base_map_defs"),
-                "north_arrow_style": {"placement": "top-left"},
+                "north_arrow_style": {
+                    "placement": "top-left",
+                },
                 "legend_style": {
                     "title": "Event Type",
                     "format_title": False,
@@ -743,7 +747,9 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "details": DependsOn("workflow_details"),
-                "widgets": DependsOn("grouped_events_map_widget_merge"),
+                "widgets": [
+                    DependsOn("grouped_events_map_widget_merge"),
+                ],
                 "groupers": DependsOn("groupers"),
                 "time_range": DependsOn("time_range"),
             }

@@ -13,6 +13,7 @@ rjsf-overrides:
   properties:
     Generate Maps.properties.skip_map_generation.properties.skip.description: >-
       Skip generating maps for the events data. Recommended for large datasets to improve performance.
+    Generate Maps.properties.base_map_defs.properties.base_maps.title: "Map Base Layers"
     Download Attachments.properties.skip_attachment_download.properties.skip.description: >-
       Skip downloading all attachments associated with the events.
     Download Attachments.properties.skip_attachment_download.properties.skip.default: true
@@ -23,7 +24,6 @@ rjsf-overrides:
     Download Attachments.download_attachments.attachments_subdir.items.ui:options.label: false
     Process Events.filter_events.filter_point_coords.items.ui:options.label: false
     Process Events.customize_columns.rename_columns.items.ui:options.label: false
-    base_map_defs.base_maps.items.ui:options.label: false
 task-instance-defaults:
   skipif:
     conditions:
@@ -236,7 +236,7 @@ workflow:
           var: "Events Map"
 
       # Set base maps
-      - name: Map Base Layers
+      - name: " "
         id: base_map_defs
         task: set_base_maps
 

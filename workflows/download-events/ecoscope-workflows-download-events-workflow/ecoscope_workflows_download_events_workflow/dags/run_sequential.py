@@ -642,7 +642,7 @@ def main(params: Params):
         )
         .partial(
             details=workflow_details,
-            widgets=grouped_events_map_widget_merge,
+            widgets=[grouped_events_map_widget_merge],
             groupers=groupers,
             time_range=time_range,
             **(params_dict.get("events_dashboard") or {}),

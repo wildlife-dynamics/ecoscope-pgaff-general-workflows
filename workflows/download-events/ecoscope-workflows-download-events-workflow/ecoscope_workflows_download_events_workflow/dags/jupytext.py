@@ -450,6 +450,7 @@ normalize_event_details = (
 filter_events_params = dict(
     bounding_box=...,
     filter_point_coords=...,
+    reset_index=...,
 )
 
 # %%
@@ -797,7 +798,7 @@ set_events_map_title = (
 
 
 # %% [markdown]
-# ## Map Base Layers
+# ##
 
 # %%
 # parameters
@@ -1023,7 +1024,7 @@ events_dashboard = (
     )
     .partial(
         details=workflow_details,
-        widgets=grouped_events_map_widget_merge,
+        widgets=[grouped_events_map_widget_merge],
         groupers=groupers,
         time_range=time_range,
         **events_dashboard_params,
