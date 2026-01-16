@@ -52,11 +52,9 @@ from ecoscope_workflows_ext_custom.tasks.io import (
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
 )
+from ecoscope_workflows_ext_custom.tasks.skip import maybe_skip_df as maybe_skip_df
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     apply_sql_query as apply_sql_query,
-)
-from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_column_prefix as drop_column_prefix,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
@@ -241,6 +239,36 @@ get_event_data = (
 
 
 # %% [markdown]
+# ## Skip Attachment Download
+
+# %%
+# parameters
+
+skip_attachment_download_params = dict(
+    skip=...,
+)
+
+# %%
+# call the task
+
+
+skip_attachment_download = (
+    maybe_skip_df.set_task_instance_id("skip_attachment_download")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(df=get_event_data, **skip_attachment_download_params)
+    .call()
+)
+
+
+# %% [markdown]
 # ## Download Attachments
 
 # %%
@@ -248,7 +276,6 @@ get_event_data = (
 
 download_attachments_params = dict(
     attachments_subdir=...,
-    skip_download=...,
 )
 
 # %%
@@ -270,7 +297,8 @@ download_attachments = (
         client=er_client_name,
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         use_index_as_id=False,
-        event_gdf=get_event_data,
+        event_gdf=skip_attachment_download,
+        skip_download=False,
         **download_attachments_params,
     )
     .call()
@@ -406,41 +434,8 @@ normalize_event_details = (
         df=extract_reported_by,
         column="event_details",
         skip_if_not_exists=True,
+        sort_columns=True,
         **normalize_event_details_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Remove Column Prefix Event Details
-
-# %%
-# parameters
-
-drop_event_details_prefix_params = dict(
-    duplicate_strategy=...,
-)
-
-# %%
-# call the task
-
-
-drop_event_details_prefix = (
-    drop_column_prefix.set_task_instance_id("drop_event_details_prefix")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        df=normalize_event_details,
-        prefix="event_details__",
-        **drop_event_details_prefix_params,
     )
     .call()
 )
@@ -455,6 +450,7 @@ drop_event_details_prefix = (
 filter_events_params = dict(
     bounding_box=...,
     filter_point_coords=...,
+    reset_index=...,
 )
 
 # %%
@@ -473,10 +469,7 @@ filter_events = (
         unpack_depth=1,
     )
     .partial(
-        df=drop_event_details_prefix,
-        roi_gdf=None,
-        roi_name=None,
-        **filter_events_params,
+        df=normalize_event_details, roi_gdf=None, roi_name=None, **filter_events_params
     )
     .call()
 )
@@ -649,7 +642,7 @@ split_event_groups = (
 persist_events_params = dict(
     filename=...,
     filetypes=...,
-    sanitize=...,
+    filename_prefix=...,
 )
 
 # %%
@@ -667,8 +660,40 @@ persist_events = (
         unpack_depth=1,
     )
     .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"], **persist_events_params
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        sanitize=True,
+        **persist_events_params,
     )
+    .mapvalues(argnames=["df"], argvalues=split_event_groups)
+)
+
+
+# %% [markdown]
+# ## Skip Map Generation
+
+# %%
+# parameters
+
+skip_map_generation_params = dict(
+    skip=...,
+)
+
+# %%
+# call the task
+
+
+skip_map_generation = (
+    maybe_skip_df.set_task_instance_id("skip_map_generation")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**skip_map_generation_params)
     .mapvalues(argnames=["df"], argvalues=split_event_groups)
 )
 
@@ -697,13 +722,12 @@ events_colormap = (
         unpack_depth=1,
     )
     .partial(
-        df=sql_query,
         input_column_name="event_type",
         colormap="tab20b",
         output_column_name="event_type_colormap",
         **events_colormap_params,
     )
-    .mapvalues(argnames=["df"], argvalues=split_event_groups)
+    .mapvalues(argnames=["df"], argvalues=skip_map_generation)
 )
 
 
@@ -774,7 +798,7 @@ set_events_map_title = (
 
 
 # %% [markdown]
-# ## Map Base Layers
+# ##
 
 # %%
 # parameters
@@ -890,6 +914,7 @@ grouped_events_ecomap = (
 
 grouped_events_ecomap_html_url_params = dict(
     filename=...,
+    filename_suffix=...,
 )
 
 # %%
@@ -909,7 +934,6 @@ grouped_events_ecomap_html_url = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="v2",
         **grouped_events_ecomap_html_url_params,
     )
     .mapvalues(argnames=["text"], argvalues=grouped_events_ecomap)
@@ -1000,7 +1024,7 @@ events_dashboard = (
     )
     .partial(
         details=workflow_details,
-        widgets=grouped_events_map_widget_merge,
+        widgets=[grouped_events_map_widget_merge],
         groupers=groupers,
         time_range=time_range,
         **events_dashboard_params,

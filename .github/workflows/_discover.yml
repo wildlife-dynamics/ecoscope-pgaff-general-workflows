@@ -6,9 +6,6 @@ on:
       workflows:
         description: "List of workflow directories"
         value: ${{ jobs.discover-workflows.outputs.workflows }}
-      pairs:
-        description: "List of workflow-testcase pairs"
-        value: ${{ jobs.discover-workflow-test-pairs.outputs.pairs }}
 
 jobs:
   discover-workflows:

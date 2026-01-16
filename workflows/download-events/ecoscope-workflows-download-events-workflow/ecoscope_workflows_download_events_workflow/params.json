@@ -80,60 +80,94 @@
           "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
         },
         "event_columns": {
+          "default": [
+            "id",
+            "time",
+            "event_type",
+            "event_category",
+            "title",
+            "reported_by",
+            "created_at",
+            "serial_number",
+            "is_collection",
+            "event_details",
+            "geometry"
+          ],
           "items": {
+            "enum": [
+              "id",
+              "location",
+              "time",
+              "end_time",
+              "message",
+              "provenance",
+              "event_type",
+              "event_category",
+              "priority",
+              "priority_label",
+              "attributes",
+              "comment",
+              "title",
+              "reported_by",
+              "state",
+              "is_contained_in",
+              "sort_at",
+              "patrol_segments",
+              "geometry",
+              "updated_at",
+              "created_at",
+              "icon_id",
+              "serial_number",
+              "url",
+              "image_url",
+              "geojson",
+              "is_collection",
+              "event_details",
+              "related_subjects",
+              "patrols"
+            ],
             "type": "string"
           },
           "title": "Event Columns",
           "type": "array",
-          "description": "The interested event columns"
+          "description": "Choose the interested event columns. If none is chosen, all columns will be returned.",
+          "uniqueItems": true
         }
       },
       "required": [
-        "event_types",
-        "event_columns"
+        "event_types"
       ],
       "type": "object",
       "title": "Get Event Data"
+    },
+    "skip_attachment_download": {
+      "additionalProperties": false,
+      "properties": {
+        "skip": {
+          "default": false,
+          "title": "Skip",
+          "type": "boolean",
+          "description": "Skip the following tasks if True, returning a sentinel value."
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Skip Attachment Download"
     },
     "download_attachments": {
       "additionalProperties": false,
       "properties": {
         "attachments_subdir": {
           "default": "attachments",
-          "title": "Attachments Subdir",
+          "title": "Attachments Subdirectory",
           "type": "string",
-          "description": "Subdirectory inside output_dir to store attachments."
-        },
-        "skip_download": {
-          "default": false,
-          "title": "Skip Download",
-          "type": "boolean",
-          "description": "If True, skip downloading attachments."
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Download Attachments"
-    },
-    "drop_event_details_prefix": {
-      "additionalProperties": false,
-      "properties": {
-        "duplicate_strategy": {
-          "default": "suffix",
-          "enum": [
-            "suffix",
-            "error",
-            "keep_original"
-          ],
-          "title": "Duplicate Strategy",
-          "type": "string",
-          "description": "Strategy for handling duplicate column names after removing prefix. 'suffix': append _1, _2, etc. to duplicates; 'error': raise ValueError if duplicates would occur; 'keep_original': keep original name with prefix if duplicate would occur.",
+          "description": "Subdirectory inside the output directory to store attachments.",
           "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
-      "title": "Remove Column Prefix Event Details"
+      "title": "Download Attachments"
     },
     "filter_events": {
       "additionalProperties": false,
@@ -163,6 +197,13 @@
           "type": "array",
           "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
           "ecoscope:advanced": true
+        },
+        "reset_index": {
+          "default": true,
+          "title": "Reset Index",
+          "type": "boolean",
+          "description": "Reset index after filtering",
+          "ecoscope:advanced": true
         }
       },
       "required": [],
@@ -189,16 +230,16 @@
           },
           "title": "Retain Columns",
           "type": "array",
-          "description": "List of columns to retain with the order specified by the list.\n                        \"Keep all the columns if the list is empty.",
+          "description": "List of columns to retain with the order specified by the list.\n                        Keep all the columns if the list is empty.",
           "ecoscope:advanced": true
         },
         "rename_columns": {
-          "additionalProperties": {
-            "type": "string"
-          },
           "default": {},
+          "items": {
+            "$ref": "#/$defs/RenameColumn"
+          },
           "title": "Rename Columns",
-          "type": "object",
+          "type": "array",
           "description": "Dictionary of columns to rename.",
           "ecoscope:advanced": true
         }
@@ -214,22 +255,16 @@
           "default": "",
           "title": "Query",
           "type": "string",
-          "description": "SQL query string to apply to the DataFrame. Use 'df' as the table name in the query."
+          "description": "SQL query string to apply to the DataFrame. Leaves it unchanged when the field is emptyUse 'df' as the table name in the query.",
+          "ecoscope:advanced": true
         },
         "columns": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
           "default": null,
+          "items": {
+            "type": "string"
+          },
           "title": "Columns",
+          "type": "array",
           "description": "Optional list of column names to include in the SQL query context. If specified, only these columns will be available in the 'df' table for querying. Use this to exclude columns with unsupported data types (list, dict) that cannot be stored in SQLite. If not specified, all columns are included.",
           "ecoscope:advanced": true
         }
@@ -266,13 +301,6 @@
     "persist_events": {
       "additionalProperties": false,
       "properties": {
-        "filename": {
-          "default": null,
-          "title": "Filename",
-          "type": "string",
-          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
-          "ecoscope:advanced": true
-        },
         "filetypes": {
           "default": [
             "csv"
@@ -288,19 +316,33 @@
           "title": "Filetypes",
           "type": "array",
           "description": "The output format",
-          "ecoscope:advanced": true
+          "uniqueItems": true
         },
-        "sanitize": {
-          "default": false,
-          "title": "Sanitize",
-          "type": "boolean",
-          "description": "Whether to sanitize the dataframe for Arrow compatibility before persisting, recommended when including event or observation details",
+        "filename_prefix": {
+          "default": null,
+          "title": "Filename Prefix",
+          "type": "string",
+          "description": "            Optional filename prefix to persist text to within the `root_path`.\n            We will always add a suffix based on the dataframe content hash to avoid duplicates.\n            ",
           "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
       "title": "Persist Events"
+    },
+    "skip_map_generation": {
+      "additionalProperties": false,
+      "properties": {
+        "skip": {
+          "default": false,
+          "title": "Skip",
+          "type": "boolean",
+          "description": "Skip the following tasks if True, returning a sentinel value."
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Skip Map Generation"
     },
     "base_map_defs": {
       "additionalProperties": false,
@@ -500,7 +542,7 @@
       },
       "type": "object",
       "required": [],
-      "title": "Map Base Layers"
+      "title": " "
     }
   },
   "$defs": {
@@ -595,6 +637,24 @@
       "title": "Coordinate",
       "type": "object"
     },
+    "RenameColumn": {
+      "properties": {
+        "original_name": {
+          "title": "Original Name",
+          "type": "string"
+        },
+        "new_name": {
+          "title": "New Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "original_name",
+        "new_name"
+      ],
+      "title": "RenameColumn",
+      "type": "object"
+    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -659,16 +719,11 @@
         "event_columns"
       ]
     },
-    "download_attachments": {
-      "ui:order": [
-        "attachments_subdir",
-        "skip_download"
-      ]
-    },
     "filter_events": {
       "ui:order": [
         "bounding_box",
-        "filter_point_coords"
+        "filter_point_coords",
+        "reset_index"
       ]
     },
     "customize_columns": {
@@ -686,9 +741,8 @@
     },
     "persist_events": {
       "ui:order": [
-        "filename",
         "filetypes",
-        "sanitize"
+        "filename_prefix"
       ]
     },
     "ui:order": [
@@ -696,13 +750,14 @@
       "time_range",
       "er_client_name",
       "get_event_data",
+      "skip_attachment_download",
       "download_attachments",
-      "drop_event_details_prefix",
       "filter_events",
       "customize_columns",
       "sql_query",
       "groupers",
       "persist_events",
+      "skip_map_generation",
       "base_map_defs"
     ]
   },

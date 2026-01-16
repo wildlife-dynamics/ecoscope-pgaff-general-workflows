@@ -2,7 +2,7 @@
 import json
 import os
 
-from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
+from ecoscope_workflows_core.graph import DependsOn, Graph, Node
 from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
 from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
@@ -43,11 +43,9 @@ from ecoscope_workflows_ext_custom.tasks.io import (
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
 )
+from ecoscope_workflows_ext_custom.tasks.skip import maybe_skip_df as maybe_skip_df
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     apply_sql_query as apply_sql_query,
-)
-from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_column_prefix as drop_column_prefix,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.io import get_events as get_events
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
@@ -80,20 +78,21 @@ def main(params: Params):
         "get_timezone": ["time_range"],
         "er_client_name": [],
         "get_event_data": ["er_client_name", "time_range"],
-        "download_attachments": ["er_client_name", "get_event_data"],
+        "skip_attachment_download": ["get_event_data"],
+        "download_attachments": ["er_client_name", "skip_attachment_download"],
         "process_columns": ["get_event_data"],
         "convert_to_user_timezone": ["process_columns", "get_timezone"],
         "extract_reported_by": ["convert_to_user_timezone"],
         "normalize_event_details": ["extract_reported_by"],
-        "drop_event_details_prefix": ["normalize_event_details"],
-        "filter_events": ["drop_event_details_prefix"],
+        "filter_events": ["normalize_event_details"],
         "customize_columns": ["filter_events"],
         "sql_query": ["customize_columns"],
         "groupers": [],
         "events_add_temporal_index": ["sql_query", "groupers"],
         "split_event_groups": ["events_add_temporal_index", "groupers"],
         "persist_events": ["split_event_groups"],
-        "events_colormap": ["sql_query", "split_event_groups"],
+        "skip_map_generation": ["split_event_groups"],
+        "events_colormap": ["skip_map_generation"],
         "rename_display_columns": ["events_colormap"],
         "set_events_map_title": [],
         "base_map_defs": [],
@@ -214,6 +213,25 @@ def main(params: Params):
             | (params_dict.get("get_event_data") or {}),
             method="call",
         ),
+        "skip_attachment_download": Node(
+            async_task=maybe_skip_df.validate()
+            .set_task_instance_id("skip_attachment_download")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "df": DependsOn("get_event_data"),
+            }
+            | (params_dict.get("skip_attachment_download") or {}),
+            method="call",
+        ),
         "download_attachments": Node(
             async_task=download_event_attachments.validate()
             .set_task_instance_id("download_attachments")
@@ -231,7 +249,8 @@ def main(params: Params):
                 "client": DependsOn("er_client_name"),
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "use_index_as_id": False,
-                "event_gdf": DependsOn("get_event_data"),
+                "event_gdf": DependsOn("skip_attachment_download"),
+                "skip_download": False,
             }
             | (params_dict.get("download_attachments") or {}),
             method="call",
@@ -251,9 +270,9 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("get_event_data"),
-                "rename_columns": {"time": "event_time"},
-                "drop_columns": [],
-                "retain_columns": [],
+                "rename_columns": {
+                    "time": "event_time",
+                },
             }
             | (params_dict.get("process_columns") or {}),
             method="call",
@@ -274,7 +293,9 @@ def main(params: Params):
             partial={
                 "df": DependsOn("process_columns"),
                 "timezone": DependsOn("get_timezone"),
-                "columns": ["time"],
+                "columns": [
+                    "time",
+                ],
             }
             | (params_dict.get("convert_to_user_timezone") or {}),
             method="call",
@@ -295,7 +316,9 @@ def main(params: Params):
             partial={
                 "df": DependsOn("convert_to_user_timezone"),
                 "column_name": "reported_by",
-                "field_name_options": ["name"],
+                "field_name_options": [
+                    "name",
+                ],
                 "output_type": "str",
                 "output_column_name": "reported_by_name",
             }
@@ -319,28 +342,9 @@ def main(params: Params):
                 "df": DependsOn("extract_reported_by"),
                 "column": "event_details",
                 "skip_if_not_exists": True,
+                "sort_columns": True,
             }
             | (params_dict.get("normalize_event_details") or {}),
-            method="call",
-        ),
-        "drop_event_details_prefix": Node(
-            async_task=drop_column_prefix.validate()
-            .set_task_instance_id("drop_event_details_prefix")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "df": DependsOn("normalize_event_details"),
-                "prefix": "event_details__",
-            }
-            | (params_dict.get("drop_event_details_prefix") or {}),
             method="call",
         ),
         "filter_events": Node(
@@ -357,7 +361,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("drop_event_details_prefix"),
+                "df": DependsOn("normalize_event_details"),
                 "roi_gdf": None,
                 "roi_name": None,
             }
@@ -475,8 +479,29 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "sanitize": True,
             }
             | (params_dict.get("persist_events") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_event_groups"),
+            },
+        ),
+        "skip_map_generation": Node(
+            async_task=maybe_skip_df.validate()
+            .set_task_instance_id("skip_map_generation")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("skip_map_generation") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
@@ -497,7 +522,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("sql_query"),
                 "input_column_name": "event_type",
                 "colormap": "tab20b",
                 "output_column_name": "event_type_colormap",
@@ -506,7 +530,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
-                "argvalues": DependsOn("split_event_groups"),
+                "argvalues": DependsOn("skip_map_generation"),
             },
         ),
         "rename_display_columns": Node(
@@ -523,8 +547,6 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "drop_columns": [],
-                "retain_columns": [],
                 "rename_columns": {
                     "serial_number": "Event Serial",
                     "event_time": "Event Time",
@@ -627,7 +649,9 @@ def main(params: Params):
             partial={
                 "title": None,
                 "tile_layers": DependsOn("base_map_defs"),
-                "north_arrow_style": {"placement": "top-left"},
+                "north_arrow_style": {
+                    "placement": "top-left",
+                },
                 "legend_style": {
                     "title": "Event Type",
                     "format_title": False,
@@ -659,7 +683,6 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filename_suffix": "v2",
             }
             | (params_dict.get("grouped_events_ecomap_html_url") or {}),
             method="mapvalues",
@@ -724,7 +747,9 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "details": DependsOn("workflow_details"),
-                "widgets": DependsOn("grouped_events_map_widget_merge"),
+                "widgets": [
+                    DependsOn("grouped_events_map_widget_merge"),
+                ],
                 "groupers": DependsOn("groupers"),
                 "time_range": DependsOn("time_range"),
             }
